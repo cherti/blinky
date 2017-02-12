@@ -15,10 +15,14 @@ def is_installed(pkgname):
 
 class Packet:
 
-	def __init__(self, name):
+	def __init__(self, name, firstparent=None):
 		print('instantate', name)
 		self.name = name
-		self.installed = is_installed(pkgname)
+		self.installed = is_installed(name)
+
+		self.parents = []
+		if firstparent:
+			self.parents.append(firstparent)
 
 		r = requests.get("https://aur.archlinux.org/rpc/", params={"type": "info", "v":5, "arg":name})
 		result = r.json()
@@ -45,7 +49,9 @@ class Packet:
 						packetname = pkg
 
 					if packetname not in packet_store:
-						packet_store[packetname] = Packet(packetname)
+						packet_store[packetname] = Packet(packetname, firstparent=self)
+					else:
+						packet_store[packetname].parents.append(self)
 
 					self.deps.append(packet_store[packetname])
 
