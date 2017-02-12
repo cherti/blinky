@@ -8,6 +8,8 @@ makedepends = []
 
 devnull = open(os.devnull, 'w')
 
+localaurpath=os.path.expanduser('~/.aur')
+
 def is_installed(pkgname):
 	return subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
 
@@ -49,6 +51,28 @@ class Packet:
 
 			for makedep in pkgdata['MakeDepends']:
 				log_makedepends(makedep)
+
+			self.tarballpath = 'https://aur.archlinux.org' + pkgdata['URLPath']
+			self.tarballname = self.tarballpath.split('/')[-1]
+
+			self.download()
+			self.extract()
+
+	def download(self):
+		os.chdir(localaurpath)
+		r = requests.get(self.tarballpath)
+		with open(self.tarballname, 'wb') as tarball:
+			tarball.write(r.content)
+
+	def extract(self):
+		subprocess.call(['tar', '-xzf', self.tarballname])
+		os.remove(self.tarballname)
+
+	def review(self):
+		pass
+
+	def build(self):
+		pass
 
 
 def log_makedepends(dep):
