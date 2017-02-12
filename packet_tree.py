@@ -47,7 +47,7 @@ class Packet:
 
 					self.deps.append(packet_store[packetname])
 
-			for makedep in result['results']['MakeDepends']:
+			for makedep in pkgdata['MakeDepends']:
 				log_makedepends(makedep)
 
 
