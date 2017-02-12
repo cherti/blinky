@@ -24,7 +24,7 @@ class Packet:
 		assert result["resultcount"] <= 1
 
 		if self.installed:
-			self.version_installed = subprocess.call(['pacman', '-Q', name], stdout=devnull, stderr=devnull)
+			self.version_installed = subprocess.getoutput("pacman -Q {}".format(name)).split()[1]
 			self.in_repos = subprocess.call(['pacman', '-Qn', name], stdout=devnull, stderr=devnull) == 0
 			self.in_aur = not self.in_repos and result['resultcount'] == 1
 		else:
