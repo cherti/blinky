@@ -75,6 +75,26 @@ class Packet:
 		os.remove(self.tarballname)
 
 	def review(self):
+		if self.in_repos:
+			return
+
+		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
+		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
+			self.drop()
+			return
+
+		if os.path.exists('{n}/{n}.install'.format(n=self.name)):
+			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
+			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
+				self.drop()
+				return
+
+		for dep in self.deps:
+			dep.review()
+
+
+	def drop(self):
+		print(':: ok, dropping {}'.format(self.name))
 		pass
 
 	def build(self):
