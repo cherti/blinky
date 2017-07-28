@@ -1,14 +1,23 @@
-import requests, subprocess, os
+import requests, subprocess, os, shutil
 
 # packet_store holds all packets so that we have all packet-objects
 # to build the fully interconnected packet graph
 packet_store = {}
 
+built_packets = []
+repo_deps = []
+
 makedepends = []
+in_repo_depends = []
 
 devnull = open(os.devnull, 'w')
 
 localaurpath=os.path.expanduser('~/.aur')
+cachedir = os.path.join(localaurpath, 'cache')
+builddir = os.path.join(localaurpath, 'build')
+os.makedirs(localaurpath, exist_ok=True)
+os.makedirs(cachedir, exist_ok=True)
+os.makedirs(builddir, exist_ok=True)
 
 def is_installed(pkgname):
 	return subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
