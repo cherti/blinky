@@ -74,7 +74,7 @@ class Packet:
 			self.extract()
 
 	def download(self):
-		os.chdir(localaurpath)
+		os.chdir(builddir)
 		r = requests.get(self.tarballpath)
 		with open(self.tarballname, 'wb') as tarball:
 			tarball.write(r.content)
@@ -110,8 +110,9 @@ class Packet:
 		pass
 
 
-def log_makedepends(dep):
-	if not is_installed(dep):
+def log_makedepends(makedep):
+	if not is_installed(makedep):
+		print(':: Makedep: {}'.format(makedep))
 		makedepends.append(makedep)
 
 
