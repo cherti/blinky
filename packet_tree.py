@@ -85,29 +85,43 @@ class Packet:
 
 	def review(self):
 		if self.in_repos:
-			return
+			return True
 
 		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
 		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
-			self.drop()
-			return
+			return False
 
 		if os.path.exists('{n}/{n}.install'.format(n=self.name)):
 			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
 			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
-				self.drop()
-				return
+				return False
 
 		for dep in self.deps:
-			dep.review()
+			if not dep.review():
+				return False  # already one dep not passing review is killer, no need to process further
 
+		return True
 
-	def drop(self):
-		print(':: ok, dropping {}'.format(self.name))
-		pass
+	def build(self, buildflags=['-C', '-d']):
+		if self in built_packets:
+			# was already built, most likely as dependency of another packet in the graph
+			return
 
-	def build(self):
-		pass
+		os.chdir(os.path.join(builddir, self.name))
+		subprocess.call(['makepkg'] + buildflags)
+		packetname = '{}.tar.xz'.format(self.name)
+		built_packets.append(packetname)
+		shutil.move(packetname, cachedir)
+
+		for d in self.deps:
+			d.build(buildflags)
+
+	def collect_repodeps():
+		if self.in_repos:
+			in_repo_depends.append(self.name)
+		else:
+			for d in self.deps:
+				d.collect_repodeps()
 
 
 def log_makedepends(makedep):
