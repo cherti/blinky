@@ -18,9 +18,8 @@ builddir = os.path.join(localaurpath, 'build')
 os.makedirs(localaurpath, exist_ok=True)
 os.makedirs(cachedir, exist_ok=True)
 os.makedirs(builddir, exist_ok=True)
+is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
 
-def is_installed(pkgname):
-	return subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
 
 class Packet:
 
