@@ -128,19 +128,13 @@ def log_makedepends(makedep):
 		makedepends.append(makedep)
 
 
-def install_makedepends():
-	"""
-	install all makedepends that are not installed yet
-	"""
-	cmdlist = ['sudo', 'pacman', '-S'] + makedepends
+def install_repo_packets(pkgs):
+	cmdlist = ['sudo', 'pacman', '-S'] + pkgs
 	print('::', " ".join(cmdlist))
-	subprocess.call(['sudo', 'pacman', '-S'] + makedepends)
+	subprocess.call(cmdlist)
 
 
-def remove_makedepends():
-	"""
-	remove all makedepends, that have previously been uninstalled
-	"""
-	cmdlist = ['sudo', 'pacman', '-Rsn'] + makedepends
+def remove_packets(pkgs):
+	cmdlist = ['sudo', 'pacman', '-Rsn'] + pkgs
 	print('::', " ".join(cmdlist))
-	subprocess.call(['sudo', 'pacman', '-Rsn'] + makedepends)
+	subprocess.call(cmdlist)
