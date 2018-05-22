@@ -114,18 +114,25 @@ class Packet:
 		for d in self.deps:
 			d.build(buildflags)
 
-	def collect_repodeps():
+	def get_repodeps():
 		if self.in_repos:
-			in_repo_depends.append(self.name)
+			return set()  # pacman will take care of repodep-tree
 		else:
+			rdeps = set()
 			for d in self.deps:
-				d.collect_repodeps()
+				if d.in_repos:
+					rdeps.add(d)
+				else:
+					rdeps.union(d.get_repodeps())
+			return rdeps
 
-
-def log_makedepends(makedep):
-	if not is_installed(makedep):
-		print(':: Makedep: {}'.format(makedep))
-		makedepends.append(makedep)
+	def get_makedeps():
+		if self.in_repos:
+			return set()
+		else:
+			makedeps = set()
+			for d in self.deps:
+				makedeps.union(d.get_makedeps())
 
 
 def install_repo_packets(pkgs):
