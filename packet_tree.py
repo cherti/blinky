@@ -91,7 +91,7 @@ class Packet:
 			return False
 
 		if os.path.exists('{n}/{n}.install'.format(n=self.name)):
-			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
+			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', '{n}/{n}.install'.format(n=self.name)])
 			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
 				return False
 
