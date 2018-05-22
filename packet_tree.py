@@ -23,16 +23,25 @@ is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout
 installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(pkgname)).split()[1]
 in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
 
+def parse_dep_pkg(pkgname, parentpkg=None):
+	packetname = pkgname.split('>=')[0]
+
+	if packetname not in packet_store:
+		packet_store[packetname] = Packet(packetname, firstparent=parentpkg)
+	elif parentpkg:
+		packet_store[packetname].parents.append(parentpkg)
+
+	return packet_store[packetname]
 
 class Packet:
 
 	def __init__(self, name, firstparent=None):
 		print('instantate', name)
-		self.name = name
+		self.name      = name
 		self.installed = is_installed(name)
-		self.parents = []
-		if firstparent:
-			self.parents.append(firstparent)
+		self.deps      = []
+		self.makedeps  = []
+		self.parents   = [firstparent] if firstparent else []
 
 		r = requests.get("https://aur.archlinux.org/rpc/", params={"type": "info", "v":5, "arg":name})
 		aurdata = r.json()
@@ -45,20 +54,13 @@ class Packet:
 		if self.in_aur:
 			pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/packet
 
-			self.deps = []
 			if "Depends" in pkgdata:
 				for pkg in pkgdata["Depends"]:
-					packetname = pkg.split('>=')[0]
+					self.deps.append(parse_dep_pkg(pkg))
 
-					if packetname not in packet_store:
-						packet_store[packetname] = Packet(packetname, firstparent=self)
-					else:
-						packet_store[packetname].parents.append(self)
-
-					self.deps.append(packet_store[packetname])
-
-			for makedep in pkgdata['MakeDepends']:
-				log_makedepends(makedep)
+			if "MakeDepends" in pkgdata:
+				for pkg in pkgdata["MakeDepends"]:
+					self.makedeps.append(parse_dep_pkg(pkg))
 
 			self.tarballpath = 'https://aur.archlinux.org' + pkgdata['URLPath']
 			self.tarballname = self.tarballpath.split('/')[-1]
@@ -89,7 +91,7 @@ class Packet:
 			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
 				return False
 
-		for dep in self.deps:
+		for dep in self.deps + self.makedeps:
 			if not dep.review():
 				return False  # already one dep not passing review is killer, no need to process further
 
