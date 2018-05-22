@@ -19,6 +19,8 @@ os.makedirs(localaurpath, exist_ok=True)
 os.makedirs(cachedir, exist_ok=True)
 os.makedirs(builddir, exist_ok=True)
 is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
+installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(pkgname)).split()[1]
+in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
 
 
 class Packet:
@@ -38,11 +40,11 @@ class Packet:
 		assert result["resultcount"] <= 1
 
 		if self.installed:
-			self.version_installed = subprocess.getoutput("pacman -Q {}".format(name)).split()[1]
-			self.in_repos = subprocess.call(['pacman', '-Qn', name], stdout=devnull, stderr=devnull) == 0
+			self.version_installed = installed_version(name)
+			self.in_repos = in_repos(name)
 			self.in_aur = not self.in_repos and result['resultcount'] == 1
 		else:
-			self.in_repos = subprocess.call(['pacman', '-Ss' , '^{}$'.format(name)], stdout=devnull, stderr=devnull) == 0
+			self.in_repos = in_repos(name)
 			self.in_aur = result['resultcount'] > 0
 
 		if self.in_aur:
@@ -51,10 +53,7 @@ class Packet:
 			self.deps = []
 			if "Depends" in pkgdata:
 				for pkg in pkgdata["Depends"]:
-					if '>=' in pkg:
-						packetname = pkg.split('>=')[0]
-					else:
-						packetname = pkg
+					packetname = pkg.split('>=')[0]
 
 					if packetname not in packet_store:
 						packet_store[packetname] = Packet(packetname, firstparent=self)
