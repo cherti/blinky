@@ -18,6 +18,7 @@ builddir = os.path.join(localaurpath, 'build')
 os.makedirs(localaurpath, exist_ok=True)
 os.makedirs(cachedir, exist_ok=True)
 os.makedirs(builddir, exist_ok=True)
+
 is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
 installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(pkgname)).split()[1]
 in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
@@ -29,26 +30,20 @@ class Packet:
 		print('instantate', name)
 		self.name = name
 		self.installed = is_installed(name)
-
 		self.parents = []
 		if firstparent:
 			self.parents.append(firstparent)
 
 		r = requests.get("https://aur.archlinux.org/rpc/", params={"type": "info", "v":5, "arg":name})
-		result = r.json()
+		aurdata = r.json()
+		assert aurdata["resultcount"] <= 1
 
-		assert result["resultcount"] <= 1
-
-		if self.installed:
-			self.version_installed = installed_version(name)
-			self.in_repos = in_repos(name)
-			self.in_aur = not self.in_repos and result['resultcount'] == 1
-		else:
-			self.in_repos = in_repos(name)
-			self.in_aur = result['resultcount'] > 0
+		self.version_installed = installed_version(name) if self.installed else None
+		self.in_repos = in_repos(name)
+		self.in_aur = not self.in_repos and aurdata['resultcount'] == 1 if self.installed else aurdata['resultcount'] > 0
 
 		if self.in_aur:
-			pkgdata = result["results"][0]  # we can do [0] because info should only ever have one result
+			pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/packet
 
 			self.deps = []
 			if "Depends" in pkgdata:
