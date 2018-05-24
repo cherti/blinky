@@ -1,4 +1,6 @@
-import requests, subprocess, os, shutil
+import requests, subprocess, os, shutil, sys
+
+import utils
 
 # packet_store holds all packets so that we have all packet-objects
 # to build the fully interconnected packet graph
@@ -33,36 +35,48 @@ def parse_dep_pkg(pkgname, parentpkg=None):
 
 	return packet_store[packetname]
 
+
+def pkg_in_cache(pkg):
+	pkgs = []
+	pkgprefix = '{}-{}-x86_64.pkg'.format(pkg.name, pkg.version_latest)
+	for pkg in os.listdir(cachedir):
+		if pkgprefix in pkg:
+			# was already built at some point
+			pkgs.append(pkg)
+	return pkgs
+
+
+
 class Packet:
 
-	def __init__(self, name, firstparent=None):
-		print('instantate', name)
-		self.name      = name
-		self.installed = is_installed(name)
-		self.deps      = []
-		self.makedeps  = []
-		self.parents   = [firstparent] if firstparent else []
-
-		r = requests.get("https://aur.archlinux.org/rpc/", params={"type": "info", "v":5, "arg":name})
-		aurdata = r.json()
-		assert aurdata["resultcount"] <= 1
-
+	def __init__(self, name, firstparent=None, debug=False, ctx=None):
+		self.name       = name
+		self.installed  = is_installed(name)
+		self.deps       = []
+		self.makedeps   = []
+		self.parents    = [firstparent] if firstparent else []
+		self.built_pkgs = []
 		self.version_installed = installed_version(name) if self.installed else None
 		self.in_repos = in_repos(name)
-		self.in_aur = not self.in_repos and aurdata['resultcount'] == 1 if self.installed else aurdata['resultcount'] > 0
+
+		self.pkgdata = utils.query_aur("info", self.name, single=True)
+		self.in_aur = not self.in_repos and self.pkgdata
+
+		if debug: print('instantate {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
 
 		if self.in_aur:
-			pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/packet
+			self.pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/packet
+			self.version_latest    = self.pkgdata['Version']
 
-			if "Depends" in pkgdata:
-				for pkg in pkgdata["Depends"]:
+			if "Depends" in self.pkgdata:
+				for pkg in self.pkgdata["Depends"]:
 					self.deps.append(parse_dep_pkg(pkg))
 
-			if "MakeDepends" in pkgdata:
-				for pkg in pkgdata["MakeDepends"]:
+			if "MakeDepends" in self.pkgdata:
+				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg))
 
-			self.tarballpath = 'https://aur.archlinux.org' + pkgdata['URLPath']
+			self.tarballpath = 'https://aur.archlinux.org' + self.pkgdata['URLPath']
 			self.tarballname = self.tarballpath.split('/')[-1]
 
 			self.download()
@@ -82,6 +96,9 @@ class Packet:
 		if self.in_repos:
 			return True
 
+		if len(pkg_in_cache(self)) > 0:
+			return True
+
 		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
 		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
 			return False
@@ -97,21 +114,33 @@ class Packet:
 
 		return True
 
-	def build(self, buildflags=['-C', '-d']):
-		if self in built_packets:
-			# was already built, most likely as dependency of another packet in the graph
-			return
+	def build(self, buildflags=['-C', '-d'], recursive=False):
+		pkgs = pkg_in_cache(self)
+		if len(pkgs) > 0:
+			self.built_pkgs += pkgs
+			return True
 
 		os.chdir(os.path.join(builddir, self.name))
-		subprocess.call(['makepkg'] + buildflags)
-		packetname = '{}.tar.xz'.format(self.name)
-		built_packets.append(packetname)
-		shutil.move(packetname, cachedir)
+		r = subprocess.call(['makepkg'] + buildflags)
+		if r != 0:
+			print(":: makepkg for packet {} terminated with exit code {}, aborting this subpath".format(self.name, r), file=sys.stderr)
+			return False
+		else:
+			pkgext = os.environ.get('PKGEXT') or 'tar.xz'
+			pkgs = [f for f in os.listdir() if f.endswith('x86_64.pkg.'+pkgext) and not os.path.isdir(f)]
+			for pkgname in pkgs:
+				self.built_pkgs.append(pkgname)
+				shutil.move(pkgname, cachedir)
 
-		for d in self.deps:
-			d.build(buildflags)
+			if recursive:
+				for d in self.deps:
+					succeded = d.build(buildflags=buildflags, recursive=True)
+					if not succeded:
+						return False  # one dep fails, the entire branch fails immediately, software will not be runnable
 
-	def get_repodeps():
+			return True
+
+	def get_repodeps(self):
 		if self.in_repos:
 			return set()  # pacman will take care of repodep-tree
 		else:
@@ -123,22 +152,26 @@ class Packet:
 					rdeps.union(d.get_repodeps())
 			return rdeps
 
-	def get_makedeps():
+	def get_makedeps(self):
 		if self.in_repos:
 			return set()
 		else:
-			makedeps = set()
+			makedeps = set(self.makedeps)
 			for d in self.deps:
 				makedeps.union(d.get_makedeps())
+			return makedeps
+
+	def get_built_pkgs(self):
+		pkgs = set(self.built_pkgs)
+		for d in self.deps:
+			pkgs.union(d.get_built_pkgs())
+		return pkgs
+
+	def __str__(self):
+		return self.name
+
+	def __repr__(self):
+		return str(self)
 
 
-def install_repo_packets(pkgs):
-	cmdlist = ['sudo', 'pacman', '-S'] + pkgs
-	print('::', " ".join(cmdlist))
-	subprocess.call(cmdlist)
 
-
-def remove_packets(pkgs):
-	cmdlist = ['sudo', 'pacman', '-Rsn'] + pkgs
-	print('::', " ".join(cmdlist))
-	subprocess.call(cmdlist)
