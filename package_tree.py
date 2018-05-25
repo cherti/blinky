@@ -6,22 +6,12 @@ from pacman import is_installed, installed_version, in_repos
 # to build the fully interconnected package graph
 pkg_store = {}
 
-devnull = open(os.devnull, 'w')
 
-#localaurpath=os.path.expanduser('~/.aur')
-localaurpath=os.path.abspath(os.path.expanduser('aur'))
-cachedir = os.path.abspath(os.path.join(localaurpath, 'cache'))
-builddir = os.path.abspath(os.path.join(localaurpath, 'build'))
-os.makedirs(localaurpath, exist_ok=True)
-os.makedirs(cachedir, exist_ok=True)
-os.makedirs(builddir, exist_ok=True)
-
-
-def parse_dep_pkg(pkgname, parentpkg=None):
+def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	packagename = pkgname.split('>=')[0]
 
 	if packagename not in pkg_store:
-		pkg_store[packagename] = Package(packagename, firstparent=parentpkg)
+		pkg_store[packagename] = Package(packagename, firstparent=parentpkg, ctx=ctx)
 	elif parentpkg:
 		pkg_store[packagename].parents.append(parentpkg)
 
@@ -31,7 +21,7 @@ def parse_dep_pkg(pkgname, parentpkg=None):
 def pkg_in_cache(pkg):
 	pkgs = []
 	pkgprefix = '{}-{}-x86_64.pkg'.format(pkg.name, pkg.version_latest)
-	for pkg in os.listdir(cachedir):
+	for pkg in os.listdir(pkg.ctx.cachedir):
 		if pkgprefix in pkg:
 			# was already built at some point
 			pkgs.append(pkg)
@@ -42,14 +32,16 @@ def pkg_in_cache(pkg):
 class Package:
 
 	def __init__(self, name, firstparent=None, debug=False, ctx=None):
-		self.name       = name
-		self.installed  = is_installed(name)
-		self.deps       = []
-		self.makedeps   = []
-		self.parents    = [firstparent] if firstparent else []
-		self.built_pkgs = []
+		self.ctx               = ctx
+		self.name              = name
+		self.installed         = is_installed(name)
+		self.deps              = []
+		self.makedeps          = []
+		self.parents           = [firstparent] if firstparent else []
+		self.built_pkgs        = []
 		self.version_installed = installed_version(name) if self.installed else None
-		self.in_repos = in_repos(name)
+		self.in_repos          = in_repos(name)
+		self.review_passed     = False
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
@@ -57,16 +49,15 @@ class Package:
 		if debug: print('instantate {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
 
 		if self.in_aur:
-			self.pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/package
 			self.version_latest    = self.pkgdata['Version']
 
 			if "Depends" in self.pkgdata:
 				for pkg in self.pkgdata["Depends"]:
-					self.deps.append(parse_dep_pkg(pkg))
+					self.deps.append(parse_dep_pkg(pkg, self.ctx))
 
 			if "MakeDepends" in self.pkgdata:
 				for pkg in self.pkgdata["MakeDepends"]:
-					self.makedeps.append(parse_dep_pkg(pkg))
+					self.makedeps.append(parse_dep_pkg(pkg, ctx))
 
 			self.tarballpath = 'https://aur.archlinux.org' + self.pkgdata['URLPath']
 			self.tarballname = self.tarballpath.split('/')[-1]
@@ -75,7 +66,7 @@ class Package:
 			self.extract()
 
 	def download(self):
-		os.chdir(builddir)
+		os.chdir(self.ctx.builddir)
 		r = requests.get(self.tarballpath)
 		with open(self.tarballname, 'wb') as tarball:
 			tarball.write(r.content)
@@ -109,10 +100,10 @@ class Package:
 	def build(self, buildflags=['-C', '-d'], recursive=False):
 		pkgs = pkg_in_cache(self)
 		if len(pkgs) > 0:
-			self.built_pkgs += pkgs[0]
+			self.built_pkgs.append(pkgs[0]) # we only need one of them, not all, if multiple ones with different extensions have been built
 			return True
 
-		os.chdir(os.path.join(builddir, self.name))
+		os.chdir(os.path.join(self.ctx.builddir, self.name))
 		r = subprocess.call(['makepkg'] + buildflags)
 		if r != 0:
 			print(":: makepkg for package {} terminated with exit code {}, aborting this subpath".format(self.name, r), file=sys.stderr)
@@ -122,7 +113,7 @@ class Package:
 			pkgs = [f for f in os.listdir() if f.endswith('x86_64.pkg.'+pkgext) and not os.path.isdir(f)]
 			for pkgname in pkgs:
 				self.built_pkgs.append(pkgname)
-				shutil.move(pkgname, cachedir)
+				shutil.move(pkgname, self.ctx.cachedir)
 
 			if recursive:
 				for d in self.deps:
