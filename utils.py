@@ -43,4 +43,4 @@ def remove_packets(pkgs):
 
 
 def install_built_packages(pkgs):
-	print("would install now: {}".format(pkgs.join(", ")
+	print("would install now: {}".format(pkgs.join(", ")))
