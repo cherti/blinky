@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import requests
+from pacman import in_repos
+
 def AmbiguousPacketName(Exception):
 	pass
 
@@ -25,21 +28,23 @@ def query_aur(query_type, arg, single=False):
 		return aurdata
 
 
-def install_repo_packets(pkgs, asdeps=True):
-	if len(pkgs) > 0:
-		cmdlist = ['sudo', 'pacman', '-S']
-		if asdeps:
-			cmdlist += ['--asdeps']
-		cmdlist += [str(p) for p in pkgs]
-		print('::', " ".join(cmdlist))
-		subprocess.call(cmdlist)
+def check_in_aur(pkgs):
+	r = query_aur("info", pkgs)
+	if r["resultcount"] == len(pkgs):
+		return pkgs, [], []
 
+	aurpkgs, repopkgs = [], []
+	for pkg in r["results"]:
+		aurpkgs += pkg["Name"]
+		pkgs    += pkg["Name"]
 
-def remove_packets(pkgs):
-	if len(pkgs) > 0:
-		cmdlist = ['sudo', 'pacman', '-Rsn'] + [str(p) for p in pkgs]
-		print('::', " ".join(cmdlist))
-		subprocess.call(cmdlist)
+	for pkg in pkgs:
+		if in_repos(pkg):
+			repopkgs += pkg
+			pkgs.remove(pkg)
+
+	# return aurpkgs, repopkgs, not_found_anywhere_pkgs
+	return aurpkgs, repopkgs, pkgs
 
 
 def install_built_packages(pkgs):

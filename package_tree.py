@@ -1,5 +1,6 @@
 import requests, subprocess, os, shutil, sys
 import utils
+from pacman import is_installed, installed_version, in_repos
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph
@@ -15,9 +16,6 @@ os.makedirs(localaurpath, exist_ok=True)
 os.makedirs(cachedir, exist_ok=True)
 os.makedirs(builddir, exist_ok=True)
 
-is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull) == 0
-installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(pkgname)).split()[1]
-in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
 
 def parse_dep_pkg(pkgname, parentpkg=None):
 	packagename = pkgname.split('>=')[0]
