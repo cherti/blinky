@@ -109,7 +109,7 @@ class Package:
 	def build(self, buildflags=['-C', '-d'], recursive=False):
 		pkgs = pkg_in_cache(self)
 		if len(pkgs) > 0:
-			self.built_pkgs += pkgs
+			self.built_pkgs += pkgs[0]
 			return True
 
 		os.chdir(os.path.join(builddir, self.name))
