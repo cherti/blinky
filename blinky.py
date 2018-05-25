@@ -98,4 +98,43 @@ def build_packages_from_aur(package_candidates):
 
 
 if __name__ == "__main__":
-	build_packages_from_aur(args.pkg_candidates)
+	if args.install:
+		build_packages_from_aur(args.pkg_candidates)
+	if args.search:
+		aurdata = utils.query_aur("search", args.pkg_candidates)
+		if aurdata["resultcount"] == 0:
+			print(" :: no results found")
+		else:
+			for pkgdata in aurdata["results"]:
+				print("aur/{} {}".format(pkgdata["Name"], pkgdata["Version"]))
+				print("    " + pkgdata["Description"])
+	if args.info:
+		from templates import pkginfo
+		foundSth = False
+		for pkg in args.pkg_candidates:
+			print("checking pkg", pkg)
+			pkgdata = utils.query_aur("info", pkg, single=True)
+			if pkgdata:
+				foundSth = True
+				print(pkginfo.format(
+						name=pkgdata.get("Name"),
+						version=pkgdata.get("Version"),
+						desc=pkgdata.get("Description"),
+						url=pkgdata.get("URL"),
+						license=", ".join(pkgdata.get("License") or ["None"]),
+						groups=", ".join(pkgdata.get("Groups") or ["None"]),
+						provides=", ".join(pkgdata.get("Provides") or ["None"]),
+						deps=", ".join(pkgdata.get("Depends") or ["None"]),
+						optdeps=", ".join(pkgdata.get("OptDepends") or ["None"]),
+						makedeps=", ".join(pkgdata.get("MakeDepends") or ["None"]),
+						conflicts=", ".join(pkgdata.get("Conflicts") or ["None"]),
+						replaces=", ".join(pkgdata.get("Replaces") or ["None"]),
+						maintainer=pkgdata.get("Maintainer"),
+						submitted=pkgdata.get("FirstSubmitted"),
+						numvotes=pkgdata.get("NumVotes"),
+						popularity=pkgdata.get("Popularity"),
+						outofdate=pkgdata.get("OutOfDate") or "No"
+						))
+
+		if not foundSth:
+			print(" :: no results found")
