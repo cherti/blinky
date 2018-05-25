@@ -2,11 +2,11 @@ import requests, subprocess, os, shutil, sys
 
 import utils
 
-# packet_store holds all packets so that we have all packet-objects
-# to build the fully interconnected packet graph
-packet_store = {}
+# pkg_store holds all packages so that we have all package-objects
+# to build the fully interconnected package graph
+pkg_store = {}
 
-built_packets = []
+built_packages = []
 repo_deps = []
 
 makedepends = []
@@ -14,9 +14,10 @@ in_repo_depends = []
 
 devnull = open(os.devnull, 'w')
 
-localaurpath=os.path.expanduser('~/.aur')
-cachedir = os.path.join(localaurpath, 'cache')
-builddir = os.path.join(localaurpath, 'build')
+#localaurpath=os.path.expanduser('~/.aur')
+localaurpath=os.path.abspath(os.path.expanduser('aur'))
+cachedir = os.path.abspath(os.path.join(localaurpath, 'cache'))
+builddir = os.path.abspath(os.path.join(localaurpath, 'build'))
 os.makedirs(localaurpath, exist_ok=True)
 os.makedirs(cachedir, exist_ok=True)
 os.makedirs(builddir, exist_ok=True)
@@ -26,14 +27,14 @@ installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(p
 in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
 
 def parse_dep_pkg(pkgname, parentpkg=None):
-	packetname = pkgname.split('>=')[0]
+	packagename = pkgname.split('>=')[0]
 
-	if packetname not in packet_store:
-		packet_store[packetname] = Packet(packetname, firstparent=parentpkg)
+	if packagename not in pkg_store:
+		pkg_store[packagename] = Package(packagename, firstparent=parentpkg)
 	elif parentpkg:
-		packet_store[packetname].parents.append(parentpkg)
+		pkg_store[packagename].parents.append(parentpkg)
 
-	return packet_store[packetname]
+	return pkg_store[packagename]
 
 
 def pkg_in_cache(pkg):
@@ -47,7 +48,7 @@ def pkg_in_cache(pkg):
 
 
 
-class Packet:
+class Package:
 
 	def __init__(self, name, firstparent=None, debug=False, ctx=None):
 		self.name       = name
@@ -65,7 +66,7 @@ class Packet:
 		if debug: print('instantate {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
 
 		if self.in_aur:
-			self.pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/packet
+			self.pkgdata = aurdata["results"][0]  # we can do [0] because aurdata should only ever have one element/package
 			self.version_latest    = self.pkgdata['Version']
 
 			if "Depends" in self.pkgdata:
@@ -123,7 +124,7 @@ class Packet:
 		os.chdir(os.path.join(builddir, self.name))
 		r = subprocess.call(['makepkg'] + buildflags)
 		if r != 0:
-			print(":: makepkg for packet {} terminated with exit code {}, aborting this subpath".format(self.name, r), file=sys.stderr)
+			print(":: makepkg for package {} terminated with exit code {}, aborting this subpath".format(self.name, r), file=sys.stderr)
 			return False
 		else:
 			pkgext = os.environ.get('PKGEXT') or 'tar.xz'
@@ -172,6 +173,4 @@ class Packet:
 
 	def __repr__(self):
 		return str(self)
-
-
 
