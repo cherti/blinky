@@ -1,16 +1,9 @@
 import requests, subprocess, os, shutil, sys
-
 import utils
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph
 pkg_store = {}
-
-built_packages = []
-repo_deps = []
-
-makedepends = []
-in_repo_depends = []
 
 devnull = open(os.devnull, 'w')
 
