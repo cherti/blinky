@@ -24,7 +24,7 @@ def get_foreign_package_versions():
 		foreign_package_versions[name] = version
 	return foreign_package_versions
 
-def install_repo_packets(pkgs, asdeps=True):
+def install_repo_packages(pkgs, asdeps=True):
 	if len(pkgs) > 0:
 		cmdlist = ['sudo', 'pacman', '-S']
 		if asdeps:
@@ -42,7 +42,7 @@ def install_package_files(pkgs, asdeps):
 		print('::', " ".join(cmdlist))
 		return subprocess.call(cmdlist)
 
-def remove_packets(pkgs):
+def remove_packages(pkgs):
 	if len(pkgs) > 0:
 		cmdlist = ['sudo', 'pacman', '-Rsn'] + [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))

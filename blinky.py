@@ -67,13 +67,10 @@ def build_packages_from_aur(package_candidates):
 		repodeps = repodeps.union(p.get_repodeps())
 
 	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
-	print(" :: Installing makedeps from repos: {}".format(", ".join(md_repos)))
-	pacman.install_repo_packets(md_repos, asdeps=True)
-
-
 	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
-	print(" :: Installing dependencies from repos: {}".format(", ".join(repodeps_uninstalled)))
-	pacman.install_repo_packets(repodeps_uninstalled, asdeps=True)
+	to_be_installed = set(repodeps).union(md_repos)
+	print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+	pacman.install_repo_packages(to_be_installed, asdeps=True)
 
 	for p in packages:
 		p.build()
@@ -93,7 +90,7 @@ def build_packages_from_aur(package_candidates):
 
 
 	print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
-	pacman.remove_packets(uninstalled_makedeps)
+	pacman.remove_packages(uninstalled_makedeps)
 
 
 if __name__ == "__main__":
