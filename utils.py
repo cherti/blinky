@@ -9,6 +9,11 @@ def AmbiguousPacketName(Exception):
 def UnknownAURQueryType(Exception):
 	pass
 
+def logerr(code, msg):
+	print(" :: Error: {}", file=sys.stderr)
+	if code:
+		exit(code)
+
 def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:
 		raise UnknownAURQueryType("query {} is not a valid query type".format(query_type))
