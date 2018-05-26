@@ -8,6 +8,14 @@ is_installed = lambda pkgname: subprocess.call(['pacman', '-Q', pkgname], stdout
 installed_version = lambda pkgname: subprocess.getoutput("pacman -Q {}".format(pkgname)).split()[1]
 in_repos = lambda pkgname: subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull) == 0
 
+def get_foreign_package_versions():
+	pkgs = subprocess.getoutput("pacman -Qm")
+	foreign_package_versions = {}
+	for p in pkgs.strip().split("\n"):
+		name, version = p.split()
+		foreign_package_versions[name] = version
+	return foreign_package_versions
+
 
 def install_repo_packets(pkgs, asdeps=True):
 	if len(pkgs) > 0:

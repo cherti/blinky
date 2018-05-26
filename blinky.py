@@ -3,7 +3,7 @@
 import argparse, sys, os
 from collections import namedtuple
 from package_tree import Package
-from pacman import install_repo_packets, remove_packets, install_package_files
+from pacman import install_repo_packets, remove_packets, install_package_files, get_foreign_package_versions
 import utils
 
 Context = namedtuple('Context', ['cachedir', 'builddir'])
@@ -16,7 +16,7 @@ primary.add_argument("-Si", action='store_true', default=False, dest='info', hel
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--local-path", action='store', default='~/.blinky', dest='aur_local', help="Local path for building and cache")
-parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="+", help="packages to install/build")
+parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 
 args = parser.parse_args()
 
@@ -138,3 +138,15 @@ if __name__ == "__main__":
 
 		if not foundSth:
 			print(" :: no results found")
+
+	if args.upgrade:
+		foreign_pkg_v = get_foreign_package_versions()
+		aurdata = utils.query_aur("info", foreign_pkg_v.keys())
+		upgradable_pkgs = []
+		for pkgdata in aurdata["results"]:
+			if pkgdata["Name"] in foreign_pkg_v:
+				if pkgdata["Version"] > foreign_pkg_v[pkgdata["Name"]]:
+					upgradable_pkgs.append(pkgdata["Name"])
+
+		build_packages_from_aur(upgradable_pkgs)
+
