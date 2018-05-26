@@ -3,8 +3,7 @@
 import argparse, sys, os
 from collections import namedtuple
 from package_tree import Package
-from pacman import install_repo_packets, remove_packets, install_package_files, get_foreign_package_versions
-import utils
+import pacman, utils
 
 Context = namedtuple('Context', ['cachedir', 'builddir'])
 
@@ -69,12 +68,12 @@ def build_packages_from_aur(package_candidates):
 
 	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
 	print(" :: Installing makedeps from repos: {}".format(", ".join(md_repos)))
-	install_repo_packets(md_repos, asdeps=True)
+	pacman.install_repo_packets(md_repos, asdeps=True)
 
 
 	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
 	print(" :: Installing dependencies from repos: {}".format(", ".join(repodeps_uninstalled)))
-	install_repo_packets(repodeps_uninstalled, asdeps=True)
+	pacman.install_repo_packets(repodeps_uninstalled, asdeps=True)
 
 	for p in packages:
 		p.build()
@@ -88,13 +87,13 @@ def build_packages_from_aur(package_candidates):
 
 	os.chdir(ctx.cachedir)
 	print(" :: installing built package dependencies: {}".format(", ".join(built_deps)))
-	install_package_files(built_deps, asdeps=True)
+	pacman.install_package_files(built_deps, asdeps=True)
 	print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
-	install_package_files(built_pkgs, asdeps=False)
+	pacman.install_package_files(built_pkgs, asdeps=False)
 
 
 	print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
-	remove_packets(uninstalled_makedeps)
+	pacman.remove_packets(uninstalled_makedeps)
 
 
 if __name__ == "__main__":
@@ -140,7 +139,7 @@ if __name__ == "__main__":
 			print(" :: no results found")
 
 	if args.upgrade:
-		foreign_pkg_v = get_foreign_package_versions()
+		foreign_pkg_v = pacman.get_foreign_package_versions()
 		aurdata = utils.query_aur("info", foreign_pkg_v.keys())
 		upgradable_pkgs = []
 		for pkgdata in aurdata["results"]:

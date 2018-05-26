@@ -1,6 +1,5 @@
 import requests, subprocess, os, shutil, sys
-import utils
-from pacman import is_installed, installed_version, in_repos
+import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph
@@ -34,13 +33,13 @@ class Package:
 	def __init__(self, name, firstparent=None, debug=False, ctx=None):
 		self.ctx               = ctx
 		self.name              = name
-		self.installed         = is_installed(name)
+		self.installed         = pacman.is_installed(name)
 		self.deps              = []
 		self.makedeps          = []
 		self.parents           = [firstparent] if firstparent else []
 		self.built_pkgs        = []
-		self.version_installed = installed_version(name) if self.installed else None
-		self.in_repos          = in_repos(name)
+		self.version_installed = pacman.installed_version(name) if self.installed else None
+		self.in_repos          = pacman.in_repos(name)
 		self.review_passed     = False
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)

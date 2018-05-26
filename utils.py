@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import requests
-from pacman import in_repos
+import pacman
 
 def AmbiguousPacketName(Exception):
 	pass
@@ -40,7 +40,7 @@ def check_in_aur(pkgs):
 		pkgs.remove(pkg["Name"])
 
 	for pkg in pkgs:
-		if in_repos(pkg):
+		if pacman.in_repos(pkg):
 			repopkgs.append(pkg)
 			pkgs.remove(pkg)
 
