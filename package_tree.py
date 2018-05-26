@@ -79,7 +79,7 @@ class Package:
 		if self.in_repos:
 			return True
 
-		if len(pkg_in_cache(self)) > 0:
+		if self.in_aur and len(pkg_in_cache(self)) > 0:
 			return True
 
 		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
