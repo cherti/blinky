@@ -13,9 +13,10 @@ def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:
 		raise UnknownAURQueryType("query {} is not a valid query type".format(query_type))
 
-	arg = arg[0] if single and type(arg) == list else arg
+	arg = [arg] if type(arg) != list else arg
 
-	r = requests.get("https://aur.archlinux.org/rpc/", params={"type": query_type, "v":5, "arg":arg})
+	arg_type = "arg[]" if query_type == "info" else "arg"
+	r = requests.get("https://aur.archlinux.org/rpc/", params={"type": query_type, "v":5, arg_type:arg})
 	aurdata = r.json()
 	if single:
 		if type == "info" and aurdata["resultcount"] > 1:
@@ -35,12 +36,12 @@ def check_in_aur(pkgs):
 
 	aurpkgs, repopkgs = [], []
 	for pkg in r["results"]:
-		aurpkgs += pkg["Name"]
-		pkgs    += pkg["Name"]
+		aurpkgs.append(pkg["Name"])
+		pkgs.remove(pkg["Name"])
 
 	for pkg in pkgs:
 		if in_repos(pkg):
-			repopkgs += pkg
+			repopkgs.append(pkg)
 			pkgs.remove(pkg)
 
 	# return aurpkgs, repopkgs, not_found_anywhere_pkgs
