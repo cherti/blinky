@@ -68,11 +68,10 @@ def build_packages_from_aur(package_candidates):
 
 	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
 	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
-	to_be_installed = set(repodeps).union(md_repos)
+	to_be_installed = set(repodeps_uninstalled).union(md_repos)
 	print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
 	if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 		utils.logerr(0, "Could not install deps and makedeps from repos")
-
 
 	for p in packages:
 		p.build()
