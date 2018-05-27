@@ -49,6 +49,7 @@ class SourcePkg:
 		self.built         = False
 		self.build_success = False
 		self.srcdir        = None
+		print("xxx", name)
 
 	def download(self):
 		os.chdir(self.ctx.builddir)
@@ -78,7 +79,7 @@ class SourcePkg:
 			r = p.wait()
 
 		if r != 0:
-			utils.logerr(":: makepkg for source package {} terminated with exit code {}".format(self.name, r))
+			utils.logerr(None, "makepkg for source package {} terminated with exit code {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
@@ -92,6 +93,7 @@ class SourcePkg:
 		return self.review_passed
 
 	def review(self):
+		print("reviewing:", self.name)
 		if self.reviewed:
 			return self.review_passed
 
@@ -137,6 +139,8 @@ class Package:
 				for pkg in self.pkgdata["Depends"]:
 					self.deps.append(parse_dep_pkg(pkg, self.ctx))
 
+			print("!!!", self.name, self.deps) 
+
 			if "MakeDepends" in self.pkgdata:
 				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg, ctx))
@@ -147,6 +151,10 @@ class Package:
 			self.srcpkg.extract()
 
 	def review(self):
+		for dep in self.deps + self.makedeps:
+			if not dep.review():
+				return False  # already one dep not passing review is killer, no need to process further
+
 		if self.in_repos: 
 			return True
 
@@ -159,14 +167,20 @@ class Package:
 		if self.in_aur and len(pkg_in_cache(self)) > 0:
 			return True
 
-		for dep in self.deps + self.makedeps:
-			if not dep.review():
-				return False  # already one dep not passing review is killer, no need to process further
 
 		return self.srcpkg.review()
 
 	def build(self, buildflags=['-Cdf'], recursive=False):
-		if self.in_repos or (self.installed and self.version_installed == self.version_latest):
+		if recursive:
+			for d in self.deps:
+				succeeded = d.build(buildflags=buildflags, recursive=True)
+				if not succeeded:
+					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
+
+		if self.in_repos or (self.installed and not self.in_aur):
+			return True
+
+		if self.installed and self.in_aur and self.version_installed == self.version_latest:
 			return True
 
 		pkgs = pkg_in_cache(self)
@@ -194,12 +208,6 @@ class Package:
 		else:
 			utils.logerr(None, "Neither package {} nor {} was found in builddir {}, aborting this subtree".format(fullpkgname_x86_64, fullpkgname_any, self.srcpkg.srcdir))
 			return False
-
-		if recursive:
-			for d in self.deps:
-				succeeded = d.build(buildflags=buildflags, recursive=True)
-				if not succeeded:
-					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
 
 		return True
 

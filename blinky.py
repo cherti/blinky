@@ -84,7 +84,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
 
 	for p in packages:
-		p.build()
+		p.build(buildflags=['-Cfd'], recursive=True)
 
 	built_pkgs = set()
 	built_deps = set()
