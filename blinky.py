@@ -35,7 +35,7 @@ print("cachedir:", ctx.cachedir)
 print("logdir:", ctx.logdir)
 
 
-def build_packages_from_aur(package_candidates):
+def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs = utils.check_in_aur(package_candidates)
 
 	if repopkgs:
@@ -68,7 +68,7 @@ def build_packages_from_aur(package_candidates):
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
 		print(" :: Building makedeps from aur: {}".format(", ".join(md_aur)))
-		build_packages_from_aur(md_aur)
+		build_packages_from_aur(md_aur, install_as_dep=True)
 
 	repodeps = set()
 	for p in packages:
@@ -115,7 +115,7 @@ def build_packages_from_aur(package_candidates):
 
 if __name__ == "__main__":
 	if args.install:
-		build_packages_from_aur(args.pkg_candidates)
+		build_packages_from_aur(args.pkg_candidates, asdeps=args.asdeps)
 	if args.search:
 		aurdata = utils.query_aur("search", args.pkg_candidates)
 		if aurdata["resultcount"] == 0:
@@ -164,5 +164,5 @@ if __name__ == "__main__":
 				if pkgdata["Version"] > foreign_pkg_v[pkgdata["Name"]]:
 					upgradable_pkgs.append(pkgdata["Name"])
 
-		build_packages_from_aur(upgradable_pkgs)
+		build_packages_from_aur(upgradable_pkgs, asdeps=args.asdeps)
 
