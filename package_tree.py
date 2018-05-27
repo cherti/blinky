@@ -3,11 +3,13 @@ import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph
-pkg_store = {}
+pkg_store    = {}
+srcpkg_store = {}
 
 
 def parse_dep_pkg(pkgname, ctx, parentpkg=None):
-	packagename = pkgname.split('>=')[0]
+	#packagename = pkgname.split('>=')[0]
+	packagename = pkgname.split('=')[0]
 
 	if packagename not in pkg_store:
 		pkg_store[packagename] = Package(packagename, firstparent=parentpkg, ctx=ctx)
@@ -15,6 +17,13 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 		pkg_store[packagename].parents.append(parentpkg)
 
 	return pkg_store[packagename]
+
+
+def parse_src_pkg(src_id, tarballpath, ctx):
+	if src_id not in srcpkg_store:
+		srcpkg_store[src_id] = SourcePkg(src_id, tarballpath, ctx=ctx)
+
+	return srcpkg_store[src_id]
 
 
 def pkg_in_cache(pkg):
@@ -26,6 +35,73 @@ def pkg_in_cache(pkg):
 			pkgs.append(pkg)
 	return pkgs
 
+
+class SourcePkg:
+
+	def __init__(self, name, tarballpath, ctx=None):
+		self.ctx           = ctx
+		self.name          = name
+		self.tarballpath   = 'https://aur.archlinux.org' + tarballpath
+		self.tarballname   = tarballpath.split('/')[-1]
+		self.reviewed      = False
+		self.review_passed = False
+		self.built         = False
+		self.build_success = False
+		self.srcdir        = None
+
+	def download(self):
+		os.chdir(self.ctx.builddir)
+		r = requests.get(self.tarballpath)
+		with open(self.tarballname, 'wb') as tarball:
+			tarball.write(r.content)
+
+	def extract(self):
+		subprocess.call(['tar', '-xzf', self.tarballname])
+		os.remove(self.tarballname)
+		self.srcdir = os.path.join(self.ctx.builddir, self.name)
+
+
+	def build(self, buildflags=[]):
+		if self.built:
+			return self.build_success
+
+		os.chdir(self.srcdir)
+		self.built = True
+
+		r = subprocess.call(['makepkg'] + buildflags)
+		if r != 0:
+			print(":: makepkg for source package {} terminated with exit code {}".format(self.name, r), file=sys.stderr)
+			self.build_success = False
+			return False
+		else:
+			self.build_success = True
+			return True
+
+	def set_review_state(self, state):
+		"""This function is a helper to keep self.review clean and readable"""
+		self.review_passed = state
+		self.reviewed = True
+		return self.review_passed
+
+	def review(self):
+		if self.reviewed:
+			return self.review_passed
+
+		os.chdir(self.srcdir)
+
+		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
+		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
+			return self.set_review_state(False)
+
+		if os.path.exists('{}.install'.format(self.name)):
+			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', '{}.install'.format(self.name)])
+			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
+				return self.set_review_state(False)
+
+		return self.set_review_state(True)
+
+	def cleanup(self):
+		shutil.rmtree(self.builddir)
 
 
 class Package:
@@ -40,7 +116,6 @@ class Package:
 		self.built_pkgs        = []
 		self.version_installed = pacman.installed_version(name) if self.installed else None
 		self.in_repos          = pacman.in_repos(name)
-		self.review_passed     = False
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
@@ -58,69 +133,64 @@ class Package:
 				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg, ctx))
 
-			self.tarballpath = 'https://aur.archlinux.org' + self.pkgdata['URLPath']
-			self.tarballname = self.tarballpath.split('/')[-1]
+			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["URLPath"], ctx=ctx)
 
-			self.download()
-			self.extract()
-
-	def download(self):
-		os.chdir(self.ctx.builddir)
-		r = requests.get(self.tarballpath)
-		with open(self.tarballname, 'wb') as tarball:
-			tarball.write(r.content)
-
-	def extract(self):
-		subprocess.call(['tar', '-xzf', self.tarballname])
-		os.remove(self.tarballname)
+			self.srcpkg.download()
+			self.srcpkg.extract()
 
 	def review(self):
-		if self.in_repos:
+		print("Reviewing", self.name)
+		if self.in_repos: 
 			return True
+
+		if self.installed and not self.in_aur:
+			return True
+
+		if self.srcpkg.reviewed:
+			return self.srcpkg.review_passed
 
 		if self.in_aur and len(pkg_in_cache(self)) > 0:
 			return True
-
-		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', self.name + '/PKGBUILD'])
-		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
-			return False
-
-		if os.path.exists('{n}/{n}.install'.format(n=self.name)):
-			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', '{n}/{n}.install'.format(n=self.name)])
-			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
-				return False
 
 		for dep in self.deps + self.makedeps:
 			if not dep.review():
 				return False  # already one dep not passing review is killer, no need to process further
 
-		return True
+		return self.srcpkg.review()
 
-	def build(self, buildflags=['-C', '-d'], recursive=False):
+	def build(self, buildflags=['-Cdf'], recursive=False):
+		if self.in_repos or (self.installed and self.version_installed == self.version_latest):
+			return True
+
 		pkgs = pkg_in_cache(self)
 		if len(pkgs) > 0:
 			self.built_pkgs.append(pkgs[0]) # we only need one of them, not all, if multiple ones with different extensions have been built
 			return True
 
-		os.chdir(os.path.join(self.ctx.builddir, self.name))
-		r = subprocess.call(['makepkg'] + buildflags)
-		if r != 0:
-			print(":: makepkg for package {} terminated with exit code {}, aborting this subpath".format(self.name, r), file=sys.stderr)
+		if self.srcpkg.built:
+			return self.srcpkg.build_success
+
+		succeeded = self.srcpkg.build(buildflags=buildflags)
+		if not succeeded:
+			utils.logerr(None, "Build of sources of package {} failed, aborting this subtree".format(self.name))
 			return False
+
+		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
+		fullpkgname = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
+		if fullpkgname in os.listdir(self.srcpkg.srcdir):
+			self.built_pkgs.append(fullpkgname)
+			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname), self.ctx.cachedir)
 		else:
-			pkgext = os.environ.get('PKGEXT') or 'tar.xz'
-			pkgs = [f for f in os.listdir() if f.endswith('x86_64.pkg.'+pkgext) and not os.path.isdir(f)]
-			for pkgname in pkgs:
-				self.built_pkgs.append(pkgname)
-				shutil.move(pkgname, self.ctx.cachedir)
+			print(" :: Package {} was not found in builddir {}, aborting this subtree".format(fullpkgname, self.srcpkg.srcdir))
+			return False
 
-			if recursive:
-				for d in self.deps:
-					succeded = d.build(buildflags=buildflags, recursive=True)
-					if not succeded:
-						return False  # one dep fails, the entire branch fails immediately, software will not be runnable
+		if recursive:
+			for d in self.deps:
+				succeeded = d.build(buildflags=buildflags, recursive=True)
+				if not succeeded:
+					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
 
-			return True
+		return True
 
 	def get_repodeps(self):
 		if self.in_repos:
