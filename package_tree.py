@@ -70,8 +70,8 @@ class SourcePkg:
 		self.built = True
 
 		# prepare logfiles
-		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout".format(self.name, self.version))
-		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr".format(self.name, self.version))
+		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout.log".format(self.name, self.version))
+		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr.log".format(self.name, self.version))
 
 		with open(stdoutlogfile, 'w') as outlog, open(stderrlogfile, 'w') as errlog:
 			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
