@@ -10,9 +10,12 @@ def UnknownAURQueryType(Exception):
 	pass
 
 def logerr(code, msg):
-	print(" :: Error: {}".format(msg), file=sys.stderr)
+	print(" !> {}".format(msg), file=sys.stderr)
 	if code:
 		exit(code)
+
+def logmsg(msg):
+	print(" :: {}".format(msg))
 
 def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:

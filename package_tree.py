@@ -49,7 +49,6 @@ class SourcePkg:
 		self.built         = False
 		self.build_success = False
 		self.srcdir        = None
-		print("xxx", name)
 
 	def download(self):
 		os.chdir(self.ctx.builddir)
@@ -79,7 +78,7 @@ class SourcePkg:
 			r = p.wait()
 
 		if r != 0:
-			utils.logerr(None, "makepkg for source package {} terminated with exit code {}".format(self.name, r))
+			utils.logerr(None, "makepkg for bkgbase {} exited with {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
@@ -93,7 +92,6 @@ class SourcePkg:
 		return self.review_passed
 
 	def review(self):
-		print("reviewing:", self.name)
 		if self.reviewed:
 			return self.review_passed
 
@@ -138,8 +136,6 @@ class Package:
 			if "Depends" in self.pkgdata:
 				for pkg in self.pkgdata["Depends"]:
 					self.deps.append(parse_dep_pkg(pkg, self.ctx))
-
-			print("!!!", self.name, self.deps) 
 
 			if "MakeDepends" in self.pkgdata:
 				for pkg in self.pkgdata["MakeDepends"]:
@@ -193,7 +189,7 @@ class Package:
 
 		succeeded = self.srcpkg.build(buildflags=buildflags)
 		if not succeeded:
-			utils.logerr(None, "Build of sources of package {} failed, aborting this subtree".format(self.name))
+			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
@@ -206,7 +202,7 @@ class Package:
 			self.built_pkgs.append(fullpkgname_any)
 			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
 		else:
-			utils.logerr(None, "Neither package {} nor {} was found in builddir {}, aborting this subtree".format(fullpkgname_x86_64, fullpkgname_any, self.srcpkg.srcdir))
+			utils.logerr(None, "Package file {}-{}-{}.pkg.{} was not found in builddir, aborting this subtree".format(self.name, self.version_latest, "{x86_64,any}", pkgext))
 			return False
 
 		return True

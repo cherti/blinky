@@ -30,18 +30,18 @@ ctx = Context(
 os.makedirs(ctx.cachedir, exist_ok=True)
 os.makedirs(ctx.builddir, exist_ok=True)
 os.makedirs(ctx.logdir, exist_ok=True)
-print("builddir:", ctx.builddir)
-print("cachedir:", ctx.cachedir)
-print("logdir:", ctx.logdir)
+#print("builddir:", ctx.builddir)
+#print("cachedir:", ctx.cachedir)
+#print("logdir:", ctx.logdir)
 
 
 def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs = utils.check_in_aur(package_candidates)
 
 	if repopkgs:
-		print(" :: Skipping packages {}: packaged in repos, use pacman to install".format(", ".join(repopkgs)))
+		utils.logmsg("Skipping: {}: packaged in repos".format(", ".join(repopkgs)))
 	if notfoundpkgs:
-		print(" :: Skipping packages {}: could not be found in either repos or AUR".format(", ".join(notfoundpkgs)))
+		utils.logmsg("Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
 
 	packages = []
 	for p in aurpkgs:
@@ -49,7 +49,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	for p in packages:
 		if not p.review():
-			print(" :: Skipping packages {}: Did not pass review".format(p.name))
+			#utils.logmsg("Skipping: {}: Did not pass review".format(p.name))
 			packages.remove(p)
 
 
@@ -58,7 +58,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		md = p.get_makedeps()
 		md_not_found = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
 		if len(md_not_found) > 0:
-			print(" :: Skipping {}: cannot satisfy makedeps from repos, AUR or local installed packages".format(p.name))
+			utils.logerr(None, "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping".format(p.name))
 			packages.remove(p)
 
 		md_available = set([p for p in md if not p.installed and (p.in_repos or p.in_aur)])
@@ -67,7 +67,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
-		print(" :: Building makedeps from aur: {}".format(", ".join(md_aur)))
+		utils.logmsg("Building makedeps from aur: {}".format(", ".join(md_aur)))
 		build_packages_from_aur(md_aur, install_as_dep=True)
 
 	repodeps = set()
@@ -79,7 +79,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	to_be_installed = set(repodeps_uninstalled).union(md_repos)
 
 	if to_be_installed:
-		print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+		utils.logmsg("Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
 
@@ -96,19 +96,19 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	os.chdir(ctx.cachedir)
 
 	if built_deps:
-		print(" :: installing built package dependencies: {}".format(", ".join(built_deps)))
+		utils.logmsg("Installing built package dependencies: {}".format(", ".join(built_deps)))
 		if not pacman.install_package_files(built_deps, asdeps=True):
 			utils.logerr(2, "Failed to install built package dependencies")
 
 	if built_pkgs:
-		print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
+		utils.logmsg("Installing built packages: {}".format(", ".join(built_pkgs)))
 		if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
 			utils.logerr(2, "Failed to install built packages")
 	else:
-		print(" :: No packages built, nothing to install")
+		utils.logmsg("No packages built, nothing to install")
 
 	if uninstalled_makedeps:
-		print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
+		utils.logmsg("Removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
 		if not pacman.remove_packages(uninstalled_makedeps):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 	if args.search:
 		aurdata = utils.query_aur("search", args.pkg_candidates)
 		if aurdata["resultcount"] == 0:
-			print(" :: no results found")
+			utils.logmsg("No results found")
 		else:
 			for pkgdata in aurdata["results"]:
 				print("aur/{} {}".format(pkgdata["Name"], pkgdata["Version"]))
@@ -128,7 +128,6 @@ if __name__ == "__main__":
 		from templates import pkginfo
 		foundSth = False
 		for pkg in args.pkg_candidates:
-			print("checking pkg", pkg)
 			pkgdata = utils.query_aur("info", pkg, single=True)
 			if pkgdata:
 				foundSth = True
@@ -153,7 +152,7 @@ if __name__ == "__main__":
 						))
 
 		if not foundSth:
-			print(" :: no results found")
+			utils.logmsg("No results found")
 
 	if args.upgrade:
 		foreign_pkg_v = pacman.get_foreign_package_versions()
