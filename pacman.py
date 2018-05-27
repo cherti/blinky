@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 
-import subprocess, os
+import subprocess, os, pyalpm
+
+handle = pyalpm.Handle("/", "/var/lib/pacman")
+ldb = handle.get_localdb()
+sdb = handle.get_syncdbs()
 
 devnull = open(os.devnull, 'w')
 
 def is_installed(pkgname):
-	r = subprocess.call(['pacman', '-Q', pkgname], stdout=devnull, stderr=devnull)
-	return r == 0
+	return pyalpm.find_satisfier(ldb.pkgcache, pkgname)
 
 def installed_version(pkgname):
-	o = subprocess.getoutput("pacman -Q {}".format(pkgname))
-	return o.split()[1]
+	s = pyalpm.find_satisfier(ldb.pkgcache, pkgname)
+	return s.version
 
 def in_repos(pkgname):
 	r = subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull)
