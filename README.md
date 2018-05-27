@@ -14,12 +14,15 @@ In particular the currently available options are
   * detailed package info: `python blinky.py -Si <package> [<package> ...]`
   * package updates: `python blinky.py -Syu`
 
+## What's still missing
+
+  * colors
+  * more concise output
+  * ...
 
 ## State
 
 blinky is currently in the bug squashing phase before release. If you want to help testing it, this is very appreciated. Just clone this repository and checkout the testing-branch. Its readme includes all relevant information how to run blinky.
-
-blinky is still rather ugly, but as the functionality is sufficiently stable by now, color and optics will be the next things to be done.
 
 New features will be added as well, the author appreciates any requests of what might be a useful feature.
 
