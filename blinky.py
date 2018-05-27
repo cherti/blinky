@@ -5,7 +5,7 @@ from collections import namedtuple
 from package_tree import Package
 import pacman, utils
 
-Context = namedtuple('Context', ['cachedir', 'builddir'])
+Context = namedtuple('Context', ['cachedir', 'builddir', 'logdir'])
 
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
@@ -22,14 +22,20 @@ args = parser.parse_args()
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
 
-ctx = Context(cachedir=os.path.join(args.aur_local, 'cache'), builddir=os.path.join(args.aur_local, 'build'))
+ctx = Context(
+		cachedir=os.path.join(args.aur_local, 'cache'),
+		builddir=os.path.join(args.aur_local, 'build'),
+		logdir=os.path.join(args.aur_local, 'logs')
+		)
 os.makedirs(ctx.cachedir, exist_ok=True)
 os.makedirs(ctx.builddir, exist_ok=True)
+os.makedirs(ctx.logdir, exist_ok=True)
 print("builddir:", ctx.builddir)
 print("cachedir:", ctx.cachedir)
+print("logdir:", ctx.logdir)
 
 
-def build_packages_from_aur(package_candidates):
+def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs = utils.check_in_aur(package_candidates)
 
 	if repopkgs:
@@ -62,7 +68,7 @@ def build_packages_from_aur(package_candidates):
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
 		print(" :: Building makedeps from aur: {}".format(", ".join(md_aur)))
-		build_packages_from_aur(md_aur)
+		build_packages_from_aur(md_aur, install_as_dep=True)
 
 	repodeps = set()
 	for p in packages:
@@ -71,9 +77,11 @@ def build_packages_from_aur(package_candidates):
 	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
 	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
 	to_be_installed = set(repodeps_uninstalled).union(md_repos)
-	print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
-	if not pacman.install_repo_packages(to_be_installed, asdeps=True):
-		utils.logerr(0, "Could not install deps and makedeps from repos")
+
+	if to_be_installed:
+		print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
+			utils.logerr(0, "Could not install deps and makedeps from repos")
 
 	for p in packages:
 		p.build()
@@ -92,19 +100,22 @@ def build_packages_from_aur(package_candidates):
 		if not pacman.install_package_files(built_deps, asdeps=True):
 			utils.logerr(2, "Failed to install built package dependencies")
 
-	print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
-	if not pacman.install_package_files(built_pkgs, asdeps=False):
-		utils.logerr(2, "Failed to install built packages")
+	if built_pkgs:
+		print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
+		if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
+			utils.logerr(2, "Failed to install built packages")
+	else:
+		print(" :: No packages built, nothing to install")
 
-
-	print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
-	if not pacman.remove_packages(uninstalled_makedeps):
-		utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+	if uninstalled_makedeps:
+		print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
+		if not pacman.remove_packages(uninstalled_makedeps):
+			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
 
 if __name__ == "__main__":
 	if args.install:
-		build_packages_from_aur(args.pkg_candidates)
+		build_packages_from_aur(args.pkg_candidates, asdeps=args.asdeps)
 	if args.search:
 		aurdata = utils.query_aur("search", args.pkg_candidates)
 		if aurdata["resultcount"] == 0:
@@ -153,5 +164,5 @@ if __name__ == "__main__":
 				if pkgdata["Version"] > foreign_pkg_v[pkgdata["Name"]]:
 					upgradable_pkgs.append(pkgdata["Name"])
 
-		build_packages_from_aur(upgradable_pkgs)
+		build_packages_from_aur(upgradable_pkgs, asdeps=args.asdeps)
 

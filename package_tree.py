@@ -19,16 +19,16 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	return pkg_store[packagename]
 
 
-def parse_src_pkg(src_id, tarballpath, ctx):
+def parse_src_pkg(src_id, version, tarballpath, ctx):
 	if src_id not in srcpkg_store:
-		srcpkg_store[src_id] = SourcePkg(src_id, tarballpath, ctx=ctx)
+		srcpkg_store[src_id] = SourcePkg(src_id, version, tarballpath, ctx=ctx)
 
 	return srcpkg_store[src_id]
 
 
 def pkg_in_cache(pkg):
 	pkgs = []
-	pkgprefix = '{}-{}-x86_64.pkg'.format(pkg.name, pkg.version_latest)
+	pkgprefix = '{}-{}-'.format(pkg.name, pkg.version_latest)
 	for pkg in os.listdir(pkg.ctx.cachedir):
 		if pkgprefix in pkg:
 			# was already built at some point
@@ -38,9 +38,10 @@ def pkg_in_cache(pkg):
 
 class SourcePkg:
 
-	def __init__(self, name, tarballpath, ctx=None):
+	def __init__(self, name, version, tarballpath, ctx=None):
 		self.ctx           = ctx
 		self.name          = name
+		self.version       = version
 		self.tarballpath   = 'https://aur.archlinux.org' + tarballpath
 		self.tarballname   = tarballpath.split('/')[-1]
 		self.reviewed      = False
@@ -68,9 +69,16 @@ class SourcePkg:
 		os.chdir(self.srcdir)
 		self.built = True
 
-		r = subprocess.call(['makepkg'] + buildflags)
+		# prepare logfiles
+		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout".format(self.name, self.version))
+		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr".format(self.name, self.version))
+
+		with open(stdoutlogfile, 'w') as outlog, open(stderrlogfile, 'w') as errlog:
+			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
+			r = p.wait()
+
 		if r != 0:
-			print(":: makepkg for source package {} terminated with exit code {}".format(self.name, r), file=sys.stderr)
+			utils.logerr(":: makepkg for source package {} terminated with exit code {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
@@ -133,13 +141,12 @@ class Package:
 				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg, ctx))
 
-			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["URLPath"], ctx=ctx)
+			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["Version"], self.pkgdata["URLPath"], ctx=ctx)
 
 			self.srcpkg.download()
 			self.srcpkg.extract()
 
 	def review(self):
-		print("Reviewing", self.name)
 		if self.in_repos: 
 			return True
 
@@ -176,12 +183,16 @@ class Package:
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
-		fullpkgname = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
-		if fullpkgname in os.listdir(self.srcpkg.srcdir):
-			self.built_pkgs.append(fullpkgname)
-			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname), self.ctx.cachedir)
+		fullpkgname_x86_64 = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
+		fullpkgname_any = "{}-{}-any.pkg.{}".format(self.name, self.version_latest, pkgext)
+		if fullpkgname_x86_64 in os.listdir(self.srcpkg.srcdir):
+			self.built_pkgs.append(fullpkgname_x86_64)
+			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_x86_64), self.ctx.cachedir)
+		elif fullpkgname_any in os.listdir(self.srcpkg.srcdir):
+			self.built_pkgs.append(fullpkgname_any)
+			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
 		else:
-			print(" :: Package {} was not found in builddir {}, aborting this subtree".format(fullpkgname, self.srcpkg.srcdir))
+			utils.logerr(None, "Neither package {} nor {} was found in builddir {}, aborting this subtree".format(fullpkgname_x86_64, fullpkgname_any, self.srcpkg.srcdir))
 			return False
 
 		if recursive:
