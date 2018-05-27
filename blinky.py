@@ -71,9 +71,11 @@ def build_packages_from_aur(package_candidates):
 	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
 	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
 	to_be_installed = set(repodeps_uninstalled).union(md_repos)
-	print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
-	if not pacman.install_repo_packages(to_be_installed, asdeps=True):
-		utils.logerr(0, "Could not install deps and makedeps from repos")
+
+	if to_be_installed:
+		print(" :: Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
+			utils.logerr(0, "Could not install deps and makedeps from repos")
 
 	for p in packages:
 		p.build()
@@ -92,14 +94,17 @@ def build_packages_from_aur(package_candidates):
 		if not pacman.install_package_files(built_deps, asdeps=True):
 			utils.logerr(2, "Failed to install built package dependencies")
 
-	print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
-	if not pacman.install_package_files(built_pkgs, asdeps=False):
-		utils.logerr(2, "Failed to install built packages")
+	if built_pkgs:
+		print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
+		if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
+			utils.logerr(2, "Failed to install built packages")
+	else:
+		print(" :: No packages built, nothing to install")
 
-
-	print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
-	if not pacman.remove_packages(uninstalled_makedeps):
-		utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+	if uninstalled_makedeps:
+		print(" :: removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
+		if not pacman.remove_packages(uninstalled_makedeps):
+			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
 
 if __name__ == "__main__":
