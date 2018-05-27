@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import requests
+import requests, sys
 import pacman
 
 def AmbiguousPacketName(Exception):
@@ -10,7 +10,7 @@ def UnknownAURQueryType(Exception):
 	pass
 
 def logerr(code, msg):
-	print(" :: Error: {}", file=sys.stderr)
+	print(" :: Error: {}".format(msg), file=sys.stderr)
 	if code:
 		exit(code)
 
