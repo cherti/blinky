@@ -15,6 +15,8 @@ primary.add_argument("-Si", action='store_true', default=False, dest='info', hel
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--local-path", action='store', default='~/.blinky', dest='aur_local', help="Local path for building and cache")
+parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none', 'skipped', for keeping skipped packages only, or 'all'")
+parser.add_argument("--keep-skipped-sources-only", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 
 args = parser.parse_args()
@@ -44,6 +46,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg("Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
 
 	packages = []
+	skipped_packages = []
 	for p in aurpkgs:
 		packages.append(Package(p, ctx=ctx))
 
@@ -51,6 +54,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		if not p.review():
 			#utils.logmsg("Skipping: {}: Did not pass review".format(p.name))
 			packages.remove(p)
+			skipped_packages.append(p)
 
 
 	uninstalled_makedeps = set()
@@ -60,6 +64,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		if len(md_not_found) > 0:
 			utils.logerr(None, "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping".format(p.name))
 			packages.remove(p)
+			skipped_packages.append(p)
 
 		md_available = set([p for p in md if not p.installed and (p.in_repos or p.in_aur)])
 
@@ -111,6 +116,14 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg("Removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
 		if not pacman.remove_packages(uninstalled_makedeps):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+
+	if not args.keep_sources == "all":
+		for p in packages:
+			p.remove_sources()
+
+	if not args.keep_sources in ["all", "skipped"]:
+		for p in skipped_packages:
+			p.remove_sources()
 
 
 if __name__ == "__main__":

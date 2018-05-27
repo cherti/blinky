@@ -109,7 +109,13 @@ class SourcePkg:
 		return self.set_review_state(True)
 
 	def cleanup(self):
-		shutil.rmtree(self.builddir)
+		if self.srcdir:
+			try:
+				shutil.rmtree(self.srcdir)
+			except PermissionError:
+				utils.logerr("Cannot remove {}: Permission denied".fomat(self.srcdir))
+
+			self.srcdir = None  # if we couldn't remove it, we can't next time, so no reason to consider the exception
 
 
 class Package:
@@ -233,6 +239,16 @@ class Package:
 		for d in self.deps:
 			pkgs.union(d.get_built_pkgs())
 		return pkgs
+
+	def remove_sources(self, recursive=True):
+		if self.srcpkg:
+			self.srcpkg.cleanup()
+
+		if recursive:
+			for d in self.deps + self.makedeps:
+				d.remove_sources()
+
+
 
 	def __str__(self):
 		return self.name
