@@ -19,9 +19,9 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	return pkg_store[packagename]
 
 
-def parse_src_pkg(src_id, tarballpath, ctx):
+def parse_src_pkg(src_id, version, tarballpath, ctx):
 	if src_id not in srcpkg_store:
-		srcpkg_store[src_id] = SourcePkg(src_id, tarballpath, ctx=ctx)
+		srcpkg_store[src_id] = SourcePkg(src_id, version, tarballpath, ctx=ctx)
 
 	return srcpkg_store[src_id]
 
@@ -38,9 +38,10 @@ def pkg_in_cache(pkg):
 
 class SourcePkg:
 
-	def __init__(self, name, tarballpath, ctx=None):
+	def __init__(self, name, version, tarballpath, ctx=None):
 		self.ctx           = ctx
 		self.name          = name
+		self.version       = version
 		self.tarballpath   = 'https://aur.archlinux.org' + tarballpath
 		self.tarballname   = tarballpath.split('/')[-1]
 		self.reviewed      = False
@@ -68,7 +69,14 @@ class SourcePkg:
 		os.chdir(self.srcdir)
 		self.built = True
 
-		r = subprocess.call(['makepkg'] + buildflags)
+		# prepare logfiles
+		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout".format(self.name, self.version))
+		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr".format(self.name, self.version))
+
+		with open(stdoutlogfile, 'w') as outlog, open(stderrlogfile, 'w') as errlog:
+			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
+			r = p.wait()
+
 		if r != 0:
 			print(":: makepkg for source package {} terminated with exit code {}".format(self.name, r), file=sys.stderr)
 			self.build_success = False
@@ -133,7 +141,7 @@ class Package:
 				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg, ctx))
 
-			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["URLPath"], ctx=ctx)
+			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["Version"], self.pkgdata["URLPath"], ctx=ctx)
 
 			self.srcpkg.download()
 			self.srcpkg.extract()
