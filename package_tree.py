@@ -78,7 +78,7 @@ class SourcePkg:
 			r = p.wait()
 
 		if r != 0:
-			print(":: makepkg for source package {} terminated with exit code {}".format(self.name, r), file=sys.stderr)
+			utils.logerr(":: makepkg for source package {} terminated with exit code {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
@@ -147,7 +147,6 @@ class Package:
 			self.srcpkg.extract()
 
 	def review(self):
-		print("Reviewing", self.name)
 		if self.in_repos: 
 			return True
 
@@ -193,7 +192,7 @@ class Package:
 			self.built_pkgs.append(fullpkgname_any)
 			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
 		else:
-			print(" :: Package {} was not found in builddir {}, aborting this subtree".format(fullpkgname, self.srcpkg.srcdir))
+			utils.logerr(None, "Neither package {} nor {} was found in builddir {}, aborting this subtree".format(fullpkgname_x86_64, fullpkgname_any, self.srcpkg.srcdir))
 			return False
 
 		if recursive:
