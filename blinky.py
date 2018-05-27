@@ -115,7 +115,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 if __name__ == "__main__":
 	if args.install:
-		build_packages_from_aur(args.pkg_candidates, asdeps=args.asdeps)
+		build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
 	if args.search:
 		aurdata = utils.query_aur("search", args.pkg_candidates)
 		if aurdata["resultcount"] == 0:
@@ -164,5 +164,4 @@ if __name__ == "__main__":
 				if pkgdata["Version"] > foreign_pkg_v[pkgdata["Name"]]:
 					upgradable_pkgs.append(pkgdata["Name"])
 
-		build_packages_from_aur(upgradable_pkgs, asdeps=args.asdeps)
-
+		build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
