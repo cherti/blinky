@@ -28,7 +28,7 @@ def parse_src_pkg(src_id, tarballpath, ctx):
 
 def pkg_in_cache(pkg):
 	pkgs = []
-	pkgprefix = '{}-{}-x86_64.pkg'.format(pkg.name, pkg.version_latest)
+	pkgprefix = '{}-{}-'.format(pkg.name, pkg.version_latest)
 	for pkg in os.listdir(pkg.ctx.cachedir):
 		if pkgprefix in pkg:
 			# was already built at some point
@@ -176,10 +176,14 @@ class Package:
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
-		fullpkgname = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
-		if fullpkgname in os.listdir(self.srcpkg.srcdir):
-			self.built_pkgs.append(fullpkgname)
-			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname), self.ctx.cachedir)
+		fullpkgname_x86_64 = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
+		fullpkgname_any = "{}-{}-any.pkg.{}".format(self.name, self.version_latest, pkgext)
+		if fullpkgname_x86_64 in os.listdir(self.srcpkg.srcdir):
+			self.built_pkgs.append(fullpkgname_x86_64)
+			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_x86_64), self.ctx.cachedir)
+		elif fullpkgname_any in os.listdir(self.srcpkg.srcdir):
+			self.built_pkgs.append(fullpkgname_any)
+			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
 		else:
 			print(" :: Package {} was not found in builddir {}, aborting this subtree".format(fullpkgname, self.srcpkg.srcdir))
 			return False
