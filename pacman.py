@@ -34,7 +34,7 @@ def install_repo_packages(pkgs, asdeps=True):
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist)
+		return subprocess.call(cmdlist) == 0
 
 def install_package_files(pkgs, asdeps):
 	if len(pkgs) > 0:
@@ -43,10 +43,10 @@ def install_package_files(pkgs, asdeps):
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist)
+		return subprocess.call(cmdlist) == 0
 
 def remove_packages(pkgs):
 	if len(pkgs) > 0:
 		cmdlist = ['sudo', 'pacman', '-Rsn'] + [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist)
+		return subprocess.call(cmdlist) == 0
