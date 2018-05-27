@@ -25,6 +25,8 @@ args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
 ctx = Context(cachedir=os.path.join(args.aur_local, 'cache'), builddir=os.path.join(args.aur_local, 'build'))
 os.makedirs(ctx.cachedir, exist_ok=True)
 os.makedirs(ctx.builddir, exist_ok=True)
+print("builddir:", ctx.builddir)
+print("cachedir:", ctx.cachedir)
 
 
 def build_packages_from_aur(package_candidates):
@@ -84,9 +86,12 @@ def build_packages_from_aur(package_candidates):
 			built_deps = built_deps.union(d.get_built_pkgs())
 
 	os.chdir(ctx.cachedir)
-	print(" :: installing built package dependencies: {}".format(", ".join(built_deps)))
-	if not pacman.install_package_files(built_deps, asdeps=True):
-		utils.logerr(2, "Failed to install built package dependencies")
+
+	if built_deps:
+		print(" :: installing built package dependencies: {}".format(", ".join(built_deps)))
+		if not pacman.install_package_files(built_deps, asdeps=True):
+			utils.logerr(2, "Failed to install built package dependencies")
+
 	print(" :: installing built packages: {}".format(", ".join(built_pkgs)))
 	if not pacman.install_package_files(built_pkgs, asdeps=False):
 		utils.logerr(2, "Failed to install built packages")
