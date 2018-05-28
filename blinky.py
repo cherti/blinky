@@ -16,7 +16,7 @@ primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade',
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--local-path", action='store', default='~/.blinky', dest='aur_local', help="Local path for building and cache")
 parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none', 'skipped', for keeping skipped packages only, or 'all'")
-parser.add_argument("--keep-skipped-sources-only", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
+parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 
 args = parser.parse_args()
@@ -100,17 +100,21 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	os.chdir(ctx.cachedir)
 
-	if built_deps:
-		utils.logmsg("Installing built package dependencies: {}".format(", ".join(built_deps)))
-		if not pacman.install_package_files(built_deps, asdeps=True):
-			utils.logerr(2, "Failed to install built package dependencies")
-
-	if built_pkgs:
-		utils.logmsg("Installing built packages: {}".format(", ".join(built_pkgs)))
-		if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
-			utils.logerr(2, "Failed to install built packages")
+	if args.buildonly:
+		utils.logmsg("Packages have been built:")
+		print(", ",join(built_deps + built_pkgs) or "None")
 	else:
-		utils.logmsg("No packages built, nothing to install")
+		if built_deps:
+			utils.logmsg("Installing built package dependencies: {}".format(", ".join(built_deps)))
+			if not pacman.install_package_files(built_deps, asdeps=True):
+				utils.logerr(2, "Failed to install built package dependencies")
+
+		if built_pkgs:
+			utils.logmsg("Installing built packages: {}".format(", ".join(built_pkgs)))
+			if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
+				utils.logerr(2, "Failed to install built packages")
+		else:
+			utils.logmsg("No packages built, nothing to install")
 
 	if uninstalled_makedeps:
 		utils.logmsg("Removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
