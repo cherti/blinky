@@ -22,4 +22,30 @@ blinky is currently in the bug squashing phase before its first release. If you 
 
 ## Running blinky (e.g. for testing or seeing if it suits your needs)
 
-Just clone this repository and checkout the testing-branch. Its readme includes all relevant information how to run blinky in the current state of development.
+To test, it is recommended to just clone this repository and checkout the testing-branch. it has a defined testable state, while master might still move forward with development.
+
+## Dependencies
+
+All dependencies are present in the official ArchLinux package repositories, they are:
+
+  * `python-requests`
+  * `pyalpm`
+
+## How to use it
+
+Just run blinky right out of the cloned directory; `python blinky.py --help` should give all relevant information you need.
+
+In particular the currently available options are
+
+  * package installation: `python blinky.py -S <package> [<package> ...]`
+  * package search: `python blinky.py -Ss <package> [<package> ...]`
+  * detailed package info: `python blinky.py -Si <package> [<package> ...]`
+  * package updates: `python blinky.py -Syu`
+
+Blinky will create a folder defaulting to `~/.blinky` where it builds stuff and stores built packgages.
+
+## What's still missing
+
+  * colors
+  * more concise output
+  * ...
