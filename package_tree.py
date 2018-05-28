@@ -70,15 +70,15 @@ class SourcePkg:
 		self.built = True
 
 		# prepare logfiles
-		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout".format(self.name, self.version))
-		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr".format(self.name, self.version))
+		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout.log".format(self.name, self.version))
+		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr.log".format(self.name, self.version))
 
 		with open(stdoutlogfile, 'w') as outlog, open(stderrlogfile, 'w') as errlog:
 			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
 			r = p.wait()
 
 		if r != 0:
-			utils.logerr(":: makepkg for source package {} terminated with exit code {}".format(self.name, r))
+			utils.logerr(None, "makepkg for bkgbase {} exited with {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
@@ -109,7 +109,20 @@ class SourcePkg:
 		return self.set_review_state(True)
 
 	def cleanup(self):
-		shutil.rmtree(self.builddir)
+		if self.srcdir:
+			try:
+				# first ensure that we have all rights to do what we want
+				for root, dirs, files in os.walk(self.srcdir):  
+					for d in dirs:  
+						os.chmod(os.path.join(root, d), 777)
+					for f in files:
+						os.chmod(os.path.join(root, f), 777)
+
+				shutil.rmtree(self.srcdir)
+			except PermissionError:
+				utils.logerr(None, "Cannot remove {}: Permission denied".format(self.srcdir))
+
+			self.srcdir = None  # if we couldn't remove it, we can't next time, so no reason to consider the exception
 
 
 class Package:
@@ -124,6 +137,7 @@ class Package:
 		self.built_pkgs        = []
 		self.version_installed = pacman.installed_version(name) if self.installed else None
 		self.in_repos          = pacman.in_repos(name)
+		self.srcpkg            = None
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
@@ -147,6 +161,10 @@ class Package:
 			self.srcpkg.extract()
 
 	def review(self):
+		for dep in self.deps + self.makedeps:
+			if not dep.review():
+				return False  # already one dep not passing review is killer, no need to process further
+
 		if self.in_repos: 
 			return True
 
@@ -159,14 +177,20 @@ class Package:
 		if self.in_aur and len(pkg_in_cache(self)) > 0:
 			return True
 
-		for dep in self.deps + self.makedeps:
-			if not dep.review():
-				return False  # already one dep not passing review is killer, no need to process further
 
 		return self.srcpkg.review()
 
 	def build(self, buildflags=['-Cdf'], recursive=False):
-		if self.in_repos or (self.installed and self.version_installed == self.version_latest):
+		if recursive:
+			for d in self.deps:
+				succeeded = d.build(buildflags=buildflags, recursive=True)
+				if not succeeded:
+					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
+
+		if self.in_repos or (self.installed and not self.in_aur):
+			return True
+
+		if self.installed and self.in_aur and self.version_installed == self.version_latest:
 			return True
 
 		pkgs = pkg_in_cache(self)
@@ -179,7 +203,7 @@ class Package:
 
 		succeeded = self.srcpkg.build(buildflags=buildflags)
 		if not succeeded:
-			utils.logerr(None, "Build of sources of package {} failed, aborting this subtree".format(self.name))
+			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
@@ -192,14 +216,8 @@ class Package:
 			self.built_pkgs.append(fullpkgname_any)
 			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
 		else:
-			utils.logerr(None, "Neither package {} nor {} was found in builddir {}, aborting this subtree".format(fullpkgname_x86_64, fullpkgname_any, self.srcpkg.srcdir))
+			utils.logerr(None, "Package file {}-{}-{}.pkg.{} was not found in builddir, aborting this subtree".format(self.name, self.version_latest, "{x86_64,any}", pkgext))
 			return False
-
-		if recursive:
-			for d in self.deps:
-				succeeded = d.build(buildflags=buildflags, recursive=True)
-				if not succeeded:
-					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
 
 		return True
 
@@ -229,6 +247,16 @@ class Package:
 		for d in self.deps:
 			pkgs.union(d.get_built_pkgs())
 		return pkgs
+
+	def remove_sources(self, recursive=True):
+		if self.srcpkg:
+			self.srcpkg.cleanup()
+
+		if recursive:
+			for d in self.deps + self.makedeps:
+				d.remove_sources()
+
+
 
 	def __str__(self):
 		return self.name
