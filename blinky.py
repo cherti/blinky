@@ -36,6 +36,11 @@ os.makedirs(ctx.logdir, exist_ok=True)
 #print("cachedir:", ctx.cachedir)
 #print("logdir:", ctx.logdir)
 
+utils.logmsg("makepkg-logs are in {}".format(ctx.logdir))
+
+if args.buildonly:
+	utils.logmsg("Sources can be found at {}".format(ctx.builddir))
+
 
 def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs = utils.check_in_aur(package_candidates)
