@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, sys, os
+import argparse, os
 from collections import namedtuple
 from package_tree import Package
 import pacman, utils
