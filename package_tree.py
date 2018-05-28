@@ -111,9 +111,16 @@ class SourcePkg:
 	def cleanup(self):
 		if self.srcdir:
 			try:
+				# first ensure that we have all rights to do what we want
+				for root, dirs, files in os.walk(self.srcdir):  
+					for d in dirs:  
+						os.chmod(os.path.join(root, d), 777)
+					for f in files:
+						os.chmod(os.path.join(root, f), 777)
+
 				shutil.rmtree(self.srcdir)
 			except PermissionError:
-				utils.logerr("Cannot remove {}: Permission denied".fomat(self.srcdir))
+				utils.logerr(None, "Cannot remove {}: Permission denied".format(self.srcdir))
 
 			self.srcdir = None  # if we couldn't remove it, we can't next time, so no reason to consider the exception
 
@@ -130,6 +137,7 @@ class Package:
 		self.built_pkgs        = []
 		self.version_installed = pacman.installed_version(name) if self.installed else None
 		self.in_repos          = pacman.in_repos(name)
+		self.srcpkg            = None
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
