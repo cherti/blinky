@@ -14,6 +14,8 @@ In particular the currently available options are
   * detailed package info: `python blinky.py -Si <package> [<package> ...]`
   * package updates: `python blinky.py -Syu`
 
+Blinky will create a folder defaulting to `~/.blinky` where it builds stuff and stores built packgages.
+
 ## What's still missing
 
   * colors
