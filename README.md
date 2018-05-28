@@ -17,4 +17,9 @@ The principles that blinky is based upon are the following:
 
 ## State
 
-blinky is currently in the bug squashing phase before release. If you want to help testing it, this is very appreciated. Just clone this repository and checkout the testing-branch. Its readme includes all relevant information how to run blinky.
+blinky is currently in the bug squashing phase before its first release. If you want to help testing it, this as well as gerneral feedback is very appreciated!
+
+
+## Running blinky (e.g. for testing or seeing if it suits your needs)
+
+Just clone this repository and checkout the testing-branch. Its readme includes all relevant information how to run blinky in the current state of development.
