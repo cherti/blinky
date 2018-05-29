@@ -14,7 +14,7 @@ def execute_privileged(cmdlist):
 	if sudo:
 		return subprocess.call(["sudo"] + cmdlist)
 	else:
-		return subprocess.call(["su", "-c"] + " ".join(cmdlist))
+		return subprocess.call(["su", "-c"] + [" ".join(cmdlist)])
 
 def is_installed(pkgname):
 	return pyalpm.find_satisfier(ldb.pkgcache, pkgname)
