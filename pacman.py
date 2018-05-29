@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 
 import subprocess, os, pyalpm
+from distutils import spawn
 
 handle = pyalpm.Handle("/", "/var/lib/pacman")
 ldb = handle.get_localdb()
 sdb = handle.get_syncdbs()
 
 devnull = open(os.devnull, 'w')
+sudo = spawn.find_executable("sudo")
+
+def execute_privileged(cmdlist):
+	if sudo:
+		return subprocess.call(["sudo"] + cmdlist)
+	else:
+		return subprocess.call(["su", "-c"] + " ".join(cmdlist))
 
 def is_installed(pkgname):
 	return pyalpm.find_satisfier(ldb.pkgcache, pkgname)
@@ -29,24 +37,24 @@ def get_foreign_package_versions():
 
 def install_repo_packages(pkgs, asdeps=True):
 	if len(pkgs) > 0:
-		cmdlist = ['sudo', 'pacman', '-S']
+		cmdlist = ['pacman', '-S']
 		if asdeps:
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist) == 0
+		return execute_privileged(cmdlist) == 0
 
 def install_package_files(pkgs, asdeps):
 	if len(pkgs) > 0:
-		cmdlist = ['sudo', 'pacman', '-U']
+		cmdlist = ['pacman', '-U']
 		if asdeps:
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist) == 0
+		return execute_privileged(cmdlist) == 0
 
 def remove_packages(pkgs):
 	if len(pkgs) > 0:
-		cmdlist = ['sudo', 'pacman', '-Rsn'] + [str(p) for p in pkgs]
+		cmdlist = ['pacman', '-Rsn'] + [str(p) for p in pkgs]
 		print('::', " ".join(cmdlist))
-		return subprocess.call(cmdlist) == 0
+		return execute_privileged(cmdlist) == 0
