@@ -98,7 +98,7 @@ class SourcePkg:
 		os.chdir(self.srcdir)
 
 		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
-		if 'y' != input('Did PKGBUILD pass review? [y/n] ').lower():
+		if 'y' != input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
 			return self.set_review_state(False)
 
 		if os.path.exists('{}.install'.format(self.name)):
