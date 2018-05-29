@@ -78,7 +78,7 @@ class SourcePkg:
 			r = p.wait()
 
 		if r != 0:
-			utils.logerr(None, "makepkg for bkgbase {} exited with {}".format(self.name, r))
+			utils.logerr(None, "makepkg for pkgbase {} exited with {}".format(self.name, r))
 			self.build_success = False
 			return False
 		else:
