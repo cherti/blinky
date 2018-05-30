@@ -8,8 +8,7 @@ srcpkg_store = {}
 
 
 def parse_dep_pkg(pkgname, ctx, parentpkg=None):
-	#packagename = pkgname.split('>=')[0]
-	packagename = pkgname.split('=')[0]
+	packagename = pkgname.split('>=')[0].split('=')[0]
 
 	if packagename not in pkg_store:
 		pkg_store[packagename] = Package(packagename, firstparent=parentpkg, ctx=ctx)
