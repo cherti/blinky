@@ -66,17 +66,22 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 
 	uninstalled_makedeps = set()
+	skipped_due_to_missing_makedeps = []
 	for p in packages:
 		md = p.get_makedeps()
 		md_not_found = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
 		if len(md_not_found) > 0:
 			utils.logerr(None, "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping".format(p.name))
-			packages.remove(p)
 			skipped_packages.append(p)
+			skipped_due_to_missing_makedeps.append(p)
 
 		md_available = set([p for p in md if not p.installed and (p.in_repos or p.in_aur)])
 
 		uninstalled_makedeps = uninstalled_makedeps.union(md_available)
+
+	# drop all packages whose makedeps cannot be satisfied
+	for p in skipped_due_to_missing_makedeps:
+		packages.remove(p)
 
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
