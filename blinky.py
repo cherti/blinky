@@ -58,8 +58,11 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	for p in packages:
 		if not p.review():
 			#utils.logmsg("Skipping: {}: Did not pass review".format(p.name))
-			packages.remove(p)
 			skipped_packages.append(p)
+
+	# drop all packages that did not pass review
+	for p in skipped_packages:
+		packages.remove(p)
 
 
 	uninstalled_makedeps = set()
