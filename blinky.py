@@ -5,8 +5,6 @@ from collections import namedtuple
 from package_tree import Package
 import pacman, utils
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'logdir'])
-
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
 primary.add_argument("-S", action='store_true', default=False, dest='install', help="Install package(s) from AUR")
@@ -18,8 +16,11 @@ parser.add_argument("--local-path", action='store', default='~/.blinky', dest='a
 parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none', 'skipped', for keeping skipped packages only, or 'all'")
 parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
+parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
 
 args = parser.parse_args()
+
+Config = namedtuple('Context', ['cachedir', 'builddir', 'logdir', 'v'])
 
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
@@ -27,28 +28,27 @@ args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
 ctx = Config(
 		cachedir=os.path.join(args.aur_local, 'cache'),
 		builddir=os.path.join(args.aur_local, 'build'),
-		logdir=os.path.join(args.aur_local, 'logs')
+		logdir=os.path.join(args.aur_local, 'logs'),
+		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
 os.makedirs(ctx.builddir, exist_ok=True)
 os.makedirs(ctx.logdir, exist_ok=True)
-#print("builddir:", ctx.builddir)
-#print("cachedir:", ctx.cachedir)
-#print("logdir:", ctx.logdir)
-
-utils.logmsg("makepkg-logs are in {}".format(ctx.logdir))
+utils.logmsg(ctx.v, 2, ("builddir: {}".format(ctx.builddir)))
+utils.logmsg(ctx.v, 2, ("cachedir: {}".format(ctx.cachedir)))
+utils.logmsg(ctx.v, 2, ("makepkg-logdir: {}".format(ctx.logdir)))
 
 if args.buildonly:
-	utils.logmsg("Sources can be found at {}".format(ctx.builddir))
+	utils.logmsg(ctx.v, 0, "Sources can be found at {}".format(ctx.builddir))
 
 
 def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs = utils.check_in_aur(package_candidates)
 
 	if repopkgs:
-		utils.logmsg("Skipping: {}: packaged in repos".format(", ".join(repopkgs)))
+		utils.logmsg(ctx.v, 1, "Skipping: {}: packaged in repos".format(", ".join(repopkgs)))
 	if notfoundpkgs:
-		utils.logmsg("Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
+		utils.logmsg(ctx.v, 1, "Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
 
 	packages = []
 	skipped_packages = []
@@ -57,13 +57,12 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	for p in packages:
 		if not p.review():
-			#utils.logmsg("Skipping: {}: Did not pass review".format(p.name))
+			utils.logmsg(ctx.v, 0, "Skipping: {}: Did not pass review".format(p.name))
 			skipped_packages.append(p)
 
 	# drop all packages that did not pass review
 	for p in skipped_packages:
 		packages.remove(p)
-
 
 	uninstalled_makedeps = set()
 	skipped_due_to_missing_makedeps = []
@@ -85,7 +84,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
-		utils.logmsg("Building makedeps from aur: {}".format(", ".join(md_aur)))
+		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(md_aur)))
 		build_packages_from_aur(md_aur, install_as_dep=True)
 
 	repodeps = set()
@@ -97,7 +96,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	to_be_installed = set(repodeps_uninstalled).union(md_repos)
 
 	if to_be_installed:
-		utils.logmsg("Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
 
@@ -114,23 +113,23 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	os.chdir(ctx.cachedir)
 
 	if args.buildonly:
-		utils.logmsg("Packages have been built:")
-		print(", ",join(built_deps + built_pkgs) or "None")
+		utils.logmsg(ctx.v, 1, "Packages have been built:")
+		utils.logmsg(ctx.v, 1, ", ",join(built_deps + built_pkgs) or "None")
 	else:
 		if built_deps:
-			utils.logmsg("Installing built package dependencies: {}".format(", ".join(built_deps)))
+			utils.logmsg(ctx.v, 0, "Installing package dependencies")
 			if not pacman.install_package_files(built_deps, asdeps=True):
 				utils.logerr(2, "Failed to install built package dependencies")
 
 		if built_pkgs:
-			utils.logmsg("Installing built packages: {}".format(", ".join(built_pkgs)))
+			utils.logmsg(ctx.v, 0, "Installing built packages")
 			if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
 				utils.logerr(2, "Failed to install built packages")
 		else:
-			utils.logmsg("No packages built, nothing to install")
+			utils.logmsg(ctx.v, 0, "No packages built, nothing to install")
 
 	if uninstalled_makedeps:
-		utils.logmsg("Removing previously uninstalled makedeps: {}".format(", ".join(uninstalled_makedeps)))
+		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
 		if not pacman.remove_packages(uninstalled_makedeps):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
@@ -149,7 +148,7 @@ if __name__ == "__main__":
 	if args.search:
 		aurdata = utils.query_aur("search", args.pkg_candidates)
 		if aurdata["resultcount"] == 0:
-			utils.logmsg("No results found")
+			utils.logmsg(ctx.v, 0, "No results found")
 		else:
 			for pkgdata in aurdata["results"]:
 				print("aur/{} {}".format(pkgdata["Name"], pkgdata["Version"]))
@@ -182,7 +181,7 @@ if __name__ == "__main__":
 						))
 
 		if not foundSth:
-			utils.logmsg("No results found")
+			utils.logmsg(ctx.v, 0, "No results found")
 
 	if args.upgrade:
 		foreign_pkg_v = pacman.get_foreign_package_versions()

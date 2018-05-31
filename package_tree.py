@@ -77,7 +77,9 @@ class SourcePkg:
 			r = p.wait()
 
 		if r != 0:
-			utils.logerr(None, "makepkg for pkgbase {} exited with {}".format(self.name, r))
+			with open(stdoutlogfile, 'a') as outlog, open(stderrlogfile, 'a') as errlog:
+				print("\nexit code: {}".format(self.name, r), file=outlog)
+				print("\nexit code: {}".format(self.name, r), file=errlog)
 			self.build_success = False
 			return False
 		else:
@@ -137,11 +139,12 @@ class Package:
 		self.version_installed = pacman.installed_version(name) if self.installed else None
 		self.in_repos          = pacman.in_repos(name)
 		self.srcpkg            = None
+		utils.logmsg(self.ctx.v, 3, "Instantiating package {}".format(self.name))
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
 
-		if debug: print('instantate {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
+		utils.logmsg(self.ctx.v, 4, 'Package details: {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
 
 		if self.in_aur:
 			self.version_latest    = self.pkgdata['Version']
@@ -160,25 +163,30 @@ class Package:
 			self.srcpkg.extract()
 
 	def review(self):
+		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))
 		for dep in self.deps + self.makedeps:
 			if not dep.review():
 				return False  # already one dep not passing review is killer, no need to process further
 
-		if self.in_repos: 
+		if self.in_repos:
+			utils.logmsg(self.ctx.v, 3, "{} passed review: in_repos".format(self.name))
 			return True
 
 		if self.installed:
 			if not self.in_aur:
+				utils.logmsg(self.ctx.v, 3, "{} passed review: installed and not in aur".format(self.name))
 				return True
-			elif: self.version_installed == self.version_latest:
+			elif self.version_installed == self.version_latest:
+				utils.logmsg(self.ctx.v, 3, "{} passed review: installed in latest version".format(self.name))
 				return True
 
 		if self.srcpkg.reviewed:
+			utils.logmsg(self.ctx.v, 3, "{} passed review due to positive pre-review".format(self.name))
 			return self.srcpkg.review_passed
 
 		if self.in_aur and len(pkg_in_cache(self)) > 0:
+			utils.logmsg(self.ctx.v, 3, "{} passed review: in cache".format(self.name))
 			return True
-
 
 		return self.srcpkg.review()
 
@@ -200,6 +208,7 @@ class Package:
 			self.built_pkgs.append(pkgs[0]) # we only need one of them, not all, if multiple ones with different extensions have been built
 			return True
 
+		utils.logmsg(self.ctx.v, 3, "building sources of {}".format(self.name))
 		if self.srcpkg.built:
 			return self.srcpkg.build_success
 

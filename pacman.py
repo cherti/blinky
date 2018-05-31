@@ -41,7 +41,6 @@ def install_repo_packages(pkgs, asdeps=True):
 		if asdeps:
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
-		print('::', " ".join(cmdlist))
 		return execute_privileged(cmdlist) == 0
 
 def install_package_files(pkgs, asdeps):
@@ -50,11 +49,9 @@ def install_package_files(pkgs, asdeps):
 		if asdeps:
 			cmdlist += ['--asdeps']
 		cmdlist += [str(p) for p in pkgs]
-		print('::', " ".join(cmdlist))
 		return execute_privileged(cmdlist) == 0
 
 def remove_packages(pkgs):
 	if len(pkgs) > 0:
 		cmdlist = ['pacman', '-Rsn'] + [str(p) for p in pkgs]
-		print('::', " ".join(cmdlist))
 		return execute_privileged(cmdlist) == 0

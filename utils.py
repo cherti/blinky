@@ -14,8 +14,9 @@ def logerr(code, msg):
 	if code:
 		exit(code)
 
-def logmsg(msg):
-	print(" :: {}".format(msg))
+def logmsg(verbosity_level, required_level, msg):
+	if verbosity_level >= required_level:
+		print(" :: {}".format(msg))
 
 def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:
