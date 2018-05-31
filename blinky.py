@@ -99,6 +99,8 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
+			for p in to_be_installed:
+				uninstalled_makedeps.remove(p)
 
 	for p in packages:
 		p.build(buildflags=['-Cfd'], recursive=True)
