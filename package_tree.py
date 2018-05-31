@@ -167,8 +167,11 @@ class Package:
 		if self.in_repos: 
 			return True
 
-		if self.installed and not self.in_aur:
-			return True
+		if self.installed:
+			if not self.in_aur:
+				return True
+			elif: self.version_installed == self.version_latest:
+				return True
 
 		if self.srcpkg.reviewed:
 			return self.srcpkg.review_passed
