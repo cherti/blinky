@@ -5,7 +5,7 @@ from collections import namedtuple
 from package_tree import Package
 import pacman, utils
 
-Context = namedtuple('Context', ['cachedir', 'builddir', 'logdir'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'logdir'])
 
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
@@ -24,7 +24,7 @@ args = parser.parse_args()
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
 
-ctx = Context(
+ctx = Config(
 		cachedir=os.path.join(args.aur_local, 'cache'),
 		builddir=os.path.join(args.aur_local, 'build'),
 		logdir=os.path.join(args.aur_local, 'logs')
