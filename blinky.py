@@ -96,7 +96,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	to_be_installed = set(repodeps_uninstalled).union(md_repos)
 
 	if to_be_installed:
-		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos: {}".format(", ".join(to_be_installed)))
+		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
 
