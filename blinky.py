@@ -11,6 +11,8 @@ primary.add_argument("-S", action='store_true', default=False, dest='install', h
 primary.add_argument("-Ss", action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
 primary.add_argument("-Si", action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
+primary.add_argument("-Sc", action='store_true', default=False, dest='clean', help="Clean cache of all uninstalled package files")
+primary.add_argument("-Scc", action='store_true', default=False, dest='fullclean', help="Clean cache of all package files, including installed")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--local-path", action='store', default='~/.blinky', dest='aur_local', help="Local path for building and cache")
 parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none', 'skipped', for keeping skipped packages only, or 'all'")
@@ -168,6 +170,27 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			p.remove_sources()
 
 
+def clean_cache(keep_installed=False):
+	pkgs = os.listdir(ctx.cachedir)
+	files_to_remove = []
+	for p in pkgs:
+		*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
+		pkgname = "-".join(pkgnameparts)
+
+		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
+
+		if pacman.is_installed(pkgname) and keep_installed:
+			files_to_remove += pkgfiles[:-1]
+		else:
+			files_to_remove += pkgfiles
+
+	os.chdir(ctx.cachedir)
+	for f in files_to_remove:
+		os.remove(f)
+
+
+
+
 if __name__ == "__main__":
 	if args.install:
 		build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
@@ -219,3 +242,8 @@ if __name__ == "__main__":
 					upgradable_pkgs.append(pkgdata["Name"])
 
 		build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
+
+	if args.clean:
+		clean_cache(keep_installed=True)
+	if args.fullclean:
+		clean_cache(keep_installed=False)
