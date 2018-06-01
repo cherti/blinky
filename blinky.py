@@ -119,8 +119,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
-			for p in to_be_installed:
-				uninstalled_makedeps.remove(p)
 
 	for p in packages:
 		p.build(buildflags=['-Cfd'], recursive=True)
@@ -152,7 +150,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	if uninstalled_makedeps:
 		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
-		if not pacman.remove_packages(uninstalled_makedeps):
+		if not pacman.remove_packages([p for p in uninstalled_makedeps if pacman.is_installed(p.name)]):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
 	if not args.keep_sources == "all":
