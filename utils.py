@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import requests, sys
+import termcolor
 import pacman
 
 def AmbiguousPacketName(Exception):
@@ -10,13 +11,17 @@ def UnknownAURQueryType(Exception):
 	pass
 
 def logerr(code, msg):
-	print(" !> {}".format(msg), file=sys.stderr)
+	print(termcolor.colored(" !> {}".format(msg), color='red'), file=sys.stderr)
 	if code:
+		print(termcolor.colored(" --> Fatal, exiting".format(msg), color='red', attrs=["bold"]), file=sys.stderr)
 		exit(code)
 
 def logmsg(verbosity_level, required_level, msg):
 	if verbosity_level >= required_level:
-		print(" :: {}".format(msg))
+		if required_level == 0:
+			print(termcolor.colored(" :: {}".format(msg), attrs=["bold"]))
+		else:
+			print(" :: {}".format(msg))
 
 def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:

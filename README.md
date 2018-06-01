@@ -30,6 +30,7 @@ All dependencies are present in the official ArchLinux package repositories, the
 
   * `python-requests`
   * `pyalpm`
+  * `python-termcolor`
 
 ## How to use it
 
@@ -44,8 +45,3 @@ In particular the currently available options are
 
 Blinky will create a folder defaulting to `~/.blinky` where it builds stuff and stores built packgages.
 
-## What's still missing
-
-  * colors
-  * more concise output
-  * ...
