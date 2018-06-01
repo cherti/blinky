@@ -134,6 +134,7 @@ class Package:
 		self.installed         = pacman.is_installed(name)
 		self.deps              = []
 		self.makedeps          = []
+		self.optdeps           = []
 		self.parents           = [firstparent] if firstparent else []
 		self.built_pkgs        = []
 		self.version_installed = pacman.installed_version(name) if self.installed else None
@@ -156,6 +157,10 @@ class Package:
 			if "MakeDepends" in self.pkgdata:
 				for pkg in self.pkgdata["MakeDepends"]:
 					self.makedeps.append(parse_dep_pkg(pkg, ctx))
+
+			if "OptDepends" in self.pkgdata:
+				for pkg in self.pkgdata["OptDepends"]:
+					self.optdeps.append(pkg)
 
 			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["Version"], self.pkgdata["URLPath"], ctx=ctx)
 
@@ -258,6 +263,18 @@ class Package:
 		for d in self.deps:
 			pkgs.union(d.get_built_pkgs())
 		return pkgs
+
+	def get_optdeps(self):
+		optdeps = []
+		for d in self.deps:
+			od = d.get_optdeps()
+			if len(od) > 0:
+				optdeps += od
+
+		if len(self.optdeps) > 0:
+			optdeps.append((self.name, self.optdeps))
+
+		return optdeps
 
 	def remove_sources(self, recursive=True):
 		if self.srcpkg:
