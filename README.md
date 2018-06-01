@@ -22,7 +22,7 @@ blinky is currently in the bug squashing phase before its first release. If you 
 
 ## Running blinky (e.g. for testing or seeing if it suits your needs)
 
-To test, it is recommended to just clone this repository and checkout the testing-branch. it has a defined testable state, while master might still move forward with development.
+To test, it is recommended to just clone this repository and run blinky right out of it as outlined below.
 
 ## Dependencies
 
