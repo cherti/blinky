@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os
+import argparse, os, asyncio
 from collections import namedtuple
 from package_tree import Package
 import pacman, utils
@@ -52,8 +52,28 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	packages = []
 	skipped_packages = []
-	for p in aurpkgs:
-		packages.append(Package(p, ctx=ctx))
+	utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
+
+
+	async def gen_package_obj(pkgnamelist, ctx):
+		pkgobj = []
+		loop = asyncio.get_event_loop()
+		futures = [
+			loop.run_in_executor(
+				None,
+				Package,
+				p, ctx
+			)
+			for p in pkgnamelist
+		]
+		for p in await asyncio.gather(*futures):
+			pkgobj.append(p)
+
+		return pkgobj
+
+	loop = asyncio.get_event_loop()
+	packages = loop.run_until_complete(gen_package_obj(aurpkgs, ctx))
+
 
 	for p in packages:
 		if not p.review():

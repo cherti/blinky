@@ -11,7 +11,7 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	packagename = pkgname.split('>=')[0].split('=')[0]
 
 	if packagename not in pkg_store:
-		pkg_store[packagename] = Package(packagename, firstparent=parentpkg, ctx=ctx)
+		pkg_store[packagename] = Package(packagename, ctx=ctx, firstparent=parentpkg)
 	elif parentpkg:
 		pkg_store[packagename].parents.append(parentpkg)
 
@@ -128,7 +128,7 @@ class SourcePkg:
 
 class Package:
 
-	def __init__(self, name, firstparent=None, debug=False, ctx=None):
+	def __init__(self, name, ctx=None, firstparent=None, debug=False):
 		self.ctx               = ctx
 		self.name              = name
 		self.installed         = pacman.is_installed(name)
