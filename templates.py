@@ -3,6 +3,7 @@ Name                 :  {name}
 Version              :  {version}
 Description          :  {desc}
 URL                  :  {url}
+AUR-URL              :  https://aur.archlinux.org/packages/{name}
 Licenses             :  {license}
 Groups               :  {groups}
 Provides             :  {provides}
