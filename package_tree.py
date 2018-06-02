@@ -1,4 +1,4 @@
-import requests, subprocess, os, shutil, sys, stat
+import requests, subprocess, os, shutil, sys
 import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
