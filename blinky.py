@@ -106,7 +106,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
 	if len(md_aur) > 0:
-		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(md_aur)))
+		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(p.name for p in md_aur)))
 		build_packages_from_aur(md_aur, install_as_dep=True)
 
 	repodeps = set()
