@@ -1,4 +1,4 @@
-import requests, subprocess, os, shutil, sys
+import requests, subprocess, os, shutil, sys, stat
 import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
@@ -110,9 +110,16 @@ class SourcePkg:
 		return self.set_review_state(True)
 
 	def cleanup(self):
+		def errhandler(func, path, excinfo):
+			os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
+			if os.path.isdir(path):
+				os.rmdir(path)
+			else:
+				os.remove(path)
+
 		if self.srcdir:
 			try:
-				shutil.rmtree(self.srcdir)
+				shutil.rmtree(self.srcdir, onerror=errhandler)
 			except PermissionError:
 				utils.logerr(None, "Cannot remove {}: Permission denied".format(self.srcdir))
 
