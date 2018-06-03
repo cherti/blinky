@@ -56,10 +56,10 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	skipped_packages = []
 	utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
 
+	loop = asyncio.get_event_loop()
 
 	async def gen_package_obj(pkgnamelist, ctx):
 		pkgobj = []
-		loop = asyncio.get_event_loop()
 		futures = [
 			loop.run_in_executor(
 				None,
@@ -73,7 +73,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 		return pkgobj
 
-	loop = asyncio.get_event_loop()
 	packages = loop.run_until_complete(gen_package_obj(aurpkgs, ctx))
 
 
