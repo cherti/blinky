@@ -1,4 +1,4 @@
-import requests, subprocess, os, shutil, sys, stat
+import requests, subprocess, os, shutil, sys, stat, asyncio
 import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
@@ -152,11 +152,11 @@ class Package:
 
 			if "Depends" in self.pkgdata:
 				for pkg in self.pkgdata["Depends"]:
-					self.deps.append(parse_dep_pkg(pkg, self.ctx))
+					self.deps.append(parse_dep_pkg(pkg, self.ctx, self))
 
 			if "MakeDepends" in self.pkgdata:
 				for pkg in self.pkgdata["MakeDepends"]:
-					self.makedeps.append(parse_dep_pkg(pkg, ctx))
+					self.makedeps.append(parse_dep_pkg(pkg, ctx, self))
 
 			if "OptDepends" in self.pkgdata:
 				for pkg in self.pkgdata["OptDepends"]:
