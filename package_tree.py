@@ -244,16 +244,22 @@ class Package:
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
-		fullpkgname_x86_64 = "{}-{}-x86_64.pkg.{}".format(self.name, self.version_latest, pkgext)
-		fullpkgname_any = "{}-{}-any.pkg.{}".format(self.name, self.version_latest, pkgext)
-		if fullpkgname_x86_64 in os.listdir(self.srcpkg.srcdir):
-			self.built_pkgs.append(fullpkgname_x86_64)
-			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_x86_64), self.ctx.cachedir)
-		elif fullpkgname_any in os.listdir(self.srcpkg.srcdir):
-			self.built_pkgs.append(fullpkgname_any)
-			shutil.move(os.path.join(self.srcpkg.srcdir, fullpkgname_any), self.ctx.cachedir)
+		fullpkgnames = []
+		fullpkgname_x86_64_tmpl = "{}-{}-x86_64.pkg.{}"
+		fullpkgname_any_tmpl = "{}-{}-any.pkg.{}"
+		if fullpkgname_x86_64_tmpl.format(self.name, self.version_latest, pkgext) in os.listdir(self.srcpkg.srcdir):
+			fullpkgnames.append(fullpkgname_x86_64_tmpl.format(self.name, self.version_latest, pkgext))
+		elif fullpkgname_any_tmpl.format(self.name, self.version_latest, pkgext) in os.listdir(self.srcpkg.srcdir):
+			fullpkgnames.append(fullpkgname_any_tmpl.format(self.name, self.version_latest, pkgext))
 		else:
-			utils.logerr(None, "Package file {}-{}-{}.pkg.{} was not found in builddir, aborting this subtree".format(self.name, self.version_latest, "{x86_64,any}", pkgext))
+			fullpkgnames = [p for p in os.listdir(self.srcpkg.srcdir) if p.endswith('.pkg.{}'.format(pkgext))]
+
+		if fullpkgnames:
+			for fpn in fullpkgnames:
+				self.built_pkgs.append(fpn)
+				shutil.move(os.path.join(self.srcpkg.srcdir, fpn), self.ctx.cachedir)
+		else:
+			utils.logerr(None, "No package file found in builddir for {}, aborting this subtree".format(self.name))
 			return False
 
 		return True
