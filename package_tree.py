@@ -65,6 +65,8 @@ class SourcePkg:
 		if self.built:
 			return self.build_success
 
+		utils.logmsg(self.ctx.v, 0, "Building package {}".format(self.name))
+
 		os.chdir(self.srcdir)
 		self.built = True
 
