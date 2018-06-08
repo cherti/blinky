@@ -259,7 +259,11 @@ class Package:
 		if fullpkgnames:
 			for fpn in fullpkgnames:
 				self.built_pkgs.append(fpn)
-				shutil.move(os.path.join(self.srcpkg.srcdir, fpn), self.ctx.cachedir)
+				if os.path.exists(os.path.join(self.ctx.cachedir, fpn)):
+					if not os.path.isfile(os.path.join(self.ctx.cachedir, fpn)):
+						utils.logerr(None, 0, "Something (that's not a file) is shadowing package {} in cache directory {}".format((fpn), self.cachedir))
+				else:
+					shutil.move(os.path.join(self.srcpkg.srcdir, fpn), self.ctx.cachedir)
 		else:
 			utils.logerr(None, "No package file found in builddir for {}, aborting this subtree".format(self.name))
 			return False
