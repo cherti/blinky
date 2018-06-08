@@ -1,5 +1,5 @@
 import requests, subprocess, os, shutil, sys, stat, asyncio
-import pacman, utils
+from blinky import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph

@@ -2,8 +2,8 @@
 
 import argparse, os, asyncio
 from collections import namedtuple
-from package_tree import Package
-import pacman, utils
+from blinky.package_tree import Package
+from blinky import pacman, utils
 
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 				print("aur/{} {}".format(pkgdata["Name"], pkgdata["Version"]))
 				print("    " + pkgdata["Description"])
 	if args.info:
-		from templates import pkginfo
+		from blinky.templates import pkginfo
 		foundSth = False
 		for pkg in args.pkg_candidates:
 			pkgdata = utils.query_aur("info", pkg, single=True)

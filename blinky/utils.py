@@ -2,7 +2,7 @@
 
 import requests, sys
 import termcolor
-import pacman
+from blinky import pacman
 
 def AmbiguousPacketName(Exception):
 	pass
