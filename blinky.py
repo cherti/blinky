@@ -126,7 +126,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		if success:
 			od = p.get_optdeps()
 			for name, optdeplist in od:
-				print(" :: Package {} has optional dependencies:")
+				print(" :: Package {} has optional dependencies:".format(p.name))
 				for odname in optdeplist:
 					print("     - {}".format(odname))
 
