@@ -2,6 +2,7 @@
 
 import argparse, os, asyncio, shutil
 from collections import namedtuple
+from packaging import version
 from blinky.package_tree import Package
 from blinky import pacman, utils
 
@@ -257,7 +258,9 @@ if __name__ == "__main__":
 		upgradable_pkgs = []
 		for pkgdata in aurdata["results"]:
 			if pkgdata["Name"] in foreign_pkg_v:
-				if pkgdata["Version"] > foreign_pkg_v[pkgdata["Name"]]:
+				v_upstream = version.parse(pkgdata["Version"])
+				v_installed = version.parse(foreign_pkg_v[pkgdata["Name"]])
+				if v_upstream > v_installed:
 					upgradable_pkgs.append(pkgdata["Name"])
 
 		build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
