@@ -112,16 +112,9 @@ class SourcePkg:
 		return self.set_review_state(True)
 
 	def cleanup(self):
-		def errhandler(func, path, excinfo):
-			os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
-			if os.path.isdir(path):
-				os.rmdir(path)
-			else:
-				os.remove(path)
-
 		if self.srcdir:
 			try:
-				shutil.rmtree(self.srcdir, onerror=errhandler)
+				shutil.rmtree(self.srcdir, onerror=lambda f, p, e: utils.delete_onerror(f, p, e))
 			except PermissionError:
 				utils.logerr(None, "Cannot remove {}: Permission denied".format(self.srcdir))
 

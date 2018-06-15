@@ -23,6 +23,15 @@ def logmsg(verbosity_level, required_level, msg):
 		else:
 			print(" :: {}".format(msg))
 
+
+def delete_onerror(func, path, excinfo):
+	os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
+	if os.path.isdir(path):
+		os.rmdir(path)
+	else:
+		os.remove(path)
+
+
 def query_aur(query_type, arg, single=False):
 	if query_type not in ["info", "search"]:
 		raise UnknownAURQueryType("query {} is not a valid query type".format(query_type))

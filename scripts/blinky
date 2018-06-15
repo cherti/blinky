@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, asyncio
+import argparse, os, asyncio, shutil
 from collections import namedtuple
 from blinky.package_tree import Package
 from blinky import pacman, utils
@@ -42,6 +42,16 @@ utils.logmsg(ctx.v, 2, ("makepkg-logdir: {}".format(ctx.logdir)))
 
 if args.buildonly:
 	utils.logmsg(ctx.v, 0, "Sources can be found at {}".format(ctx.builddir))
+
+
+def cleanup_procedure(pkgs, pkgs_skipped, keep_sources):
+	if not keep_sources == "all":
+		for p in pkgs:
+			p.remove_sources()
+
+	if not keep_sources in ["all", "skipped"]:
+		for p in pkgs_skipped:
+			p.remove_sources()
 
 
 def build_packages_from_aur(package_candidates, install_as_dep=False):
@@ -146,11 +156,13 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		if built_deps:
 			utils.logmsg(ctx.v, 0, "Installing package dependencies")
 			if not pacman.install_package_files(built_deps, asdeps=True):
+				cleanup_procedure(packages, skipped_packages, args.keep_sources)
 				utils.logerr(2, "Failed to install built package dependencies")
 
 		if built_pkgs:
 			utils.logmsg(ctx.v, 0, "Installing built packages")
 			if not pacman.install_package_files(built_pkgs, asdeps=install_as_dep):
+				cleanup_procedure(packages, skipped_packages, args.keep_sources)
 				utils.logerr(2, "Failed to install built packages")
 		else:
 			utils.logmsg(ctx.v, 0, "No packages built, nothing to install")
@@ -160,13 +172,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		if not pacman.remove_packages([p for p in uninstalled_makedeps if pacman.is_installed(p.name)]):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
-	if not args.keep_sources == "all":
-		for p in packages:
-			p.remove_sources()
-
-	if not args.keep_sources in ["all", "skipped"]:
-		for p in skipped_packages:
-			p.remove_sources()
+	cleanup_procedure(packages, skipped_packages, args.keep_sources)
 
 
 def clean_cache(keep_installed=False):
@@ -186,6 +192,16 @@ def clean_cache(keep_installed=False):
 	os.chdir(ctx.cachedir)
 	for f in files_to_remove:
 		os.remove(f)
+
+
+def clean_builddir():
+	os.chdir(ctx.builddir)
+	try:
+		for pkgdir in os.listdir(ctx.builddir):
+			shutil.rmtree(pkgdir, onerror=lambda f, p, e: utils.delete_onerror(f, p, e))
+	except PermissionError:
+		utils.logerr(None, "Cannot remove {}: Permission denied".format(self.srcdir))
+
 
 
 
@@ -248,5 +264,7 @@ if __name__ == "__main__":
 
 	if args.clean:
 		clean_cache(keep_installed=True)
+		clean_builddir()
 	if args.fullclean:
 		clean_cache(keep_installed=False)
+		clean_builddir()
