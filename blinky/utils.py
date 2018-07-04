@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import requests, sys
+import requests, sys, os
 import termcolor
 from blinky import pacman
 
