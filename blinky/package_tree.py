@@ -227,11 +227,11 @@ class Package:
 		if self.in_repos or (self.installed and not self.in_aur):
 			return True
 
-		if self.installed and self.in_aur and self.version_installed == self.version_latest:
+		if self.installed and self.in_aur and self.version_installed == self.version_latest and not self.ctx.rebuild:
 			return True
 
 		pkgs = pkg_in_cache(self)
-		if len(pkgs) > 0:
+		if len(pkgs) > 0 and not self.ctx.rebuild:
 			self.built_pkgs.append(pkgs[0]) # we only need one of them, not all, if multiple ones with different extensions have been built
 			return True
 
