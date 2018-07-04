@@ -199,7 +199,7 @@ class Package:
 			utils.logmsg(self.ctx.v, 3, "{} passed review: in_repos".format(self.name))
 			return True
 
-		if self.installed:
+		if self.installed and not self.ctx.rebuild:
 			if not self.in_aur:
 				utils.logmsg(self.ctx.v, 3, "{} passed review: installed and not in aur".format(self.name))
 				return True
@@ -211,7 +211,7 @@ class Package:
 			utils.logmsg(self.ctx.v, 3, "{} passed review due to positive pre-review".format(self.name))
 			return self.srcpkg.review_passed
 
-		if self.in_aur and len(pkg_in_cache(self)) > 0:
+		if self.in_aur and len(pkg_in_cache(self)) > 0 and not self.ctx.rebuild:
 			utils.logmsg(self.ctx.v, 3, "{} passed review: in cache".format(self.name))
 			return True
 
