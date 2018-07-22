@@ -58,7 +58,7 @@ class SourcePkg:
 	def extract(self):
 		retval = subprocess.call(['tar', '-xzf', self.tarballname])
 		if retval != 0:
-			utils.logerr(None, "Couldn't extract tarball for self.name")
+			utils.logerr(None, "Couldn't extract tarball for {}".format(self.name))
 
 		if os.path.exists(self.tarballname):
 			os.remove(self.tarballname)
