@@ -67,7 +67,11 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	packages = []
 	skipped_packages = []
-	utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
+	if len(aurpkgs) == 0:
+		utils.logmsg(ctx.v, 0, "No package candidates found in AUR, nothing to do.")
+		exit(0)
+	else:
+		utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
 
 	loop = asyncio.get_event_loop()
 
