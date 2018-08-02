@@ -48,6 +48,8 @@ class SourcePkg:
 		self.built         = False
 		self.build_success = False
 		self.srcdir        = None
+		utils.logmsg(self.ctx.v, 3, "Instantiating source-pkg {}".format(self.name))
+
 
 	def download(self):
 		os.chdir(self.ctx.builddir)
@@ -146,7 +148,7 @@ class Package:
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
 		self.in_aur = not self.in_repos and self.pkgdata
 
-		utils.logmsg(self.ctx.v, 4, 'Package details: {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos"))
+		utils.logmsg(self.ctx.v, 4, 'Package details: {}; {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos", "in AUR" if self.in_aur else "not in AUR"))
 
 		if self.in_aur:
 			self.version_latest    = self.pkgdata['Version']
