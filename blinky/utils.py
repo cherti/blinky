@@ -10,6 +10,9 @@ def AmbiguousPacketName(Exception):
 def UnknownAURQueryType(Exception):
 	pass
 
+class UnsatisfiableDependencyError(Exception):
+	pass
+
 def logerr(code, msg):
 	print(termcolor.colored(" !> {}".format(msg), color='red'), file=sys.stderr)
 	if code:
@@ -63,7 +66,7 @@ def check_in_aur(pkgs):
 		pkgs.remove(pkg["Name"])
 
 	for pkg in pkgs:
-		if pacman.in_repos(pkg):
+		if pacman.find_satisfier_in_syncdbs(pkg):
 			repopkgs.append(pkg)
 			pkgs.remove(pkg)
 

@@ -134,14 +134,28 @@ class Package:
 	def __init__(self, name, ctx=None, firstparent=None, debug=False):
 		self.ctx               = ctx
 		self.name              = name
-		self.installed         = pacman.is_installed(name)
+		self.installed         = None
+		self.version_installed = None
+		self.in_repos          = None
+		s = pacman.find_local_satisfier(name)
+		if s:
+			self.installed = True
+			self.name = s.name
+			self.version_installed = s.version
+		else:
+			self.installed = False
+			s = pacman.find_satisfier_in_syncdbs(name)
+			if s:
+				self.in_repos = True
+				self.name     = s.name
+			else:
+				self.in_repos = False
+
 		self.deps              = []
 		self.makedeps          = []
 		self.optdeps           = []
 		self.parents           = [firstparent] if firstparent else []
 		self.built_pkgs        = []
-		self.version_installed = pacman.installed_version(name) if self.installed else None
-		self.in_repos          = pacman.in_repos(name)
 		self.srcpkg            = None
 		utils.logmsg(self.ctx.v, 3, "Instantiating package {}".format(self.name))
 
@@ -179,8 +193,10 @@ class Package:
 
 				return deps, makedeps
 
-			self.deps, self.makedeps = loop.run_until_complete(parse_dependencies(depnames + makedepnames))
-
+			try:
+				self.deps, self.makedeps = loop.run_until_complete(parse_dependencies(depnames + makedepnames))
+			except utils.UnsatisfiableDependencyError as e:
+				raise utils.UnsatisfiableDependencyError(str(e) + " for {}".format(self.name))
 
 			if "OptDepends" in self.pkgdata:
 				for pkg in self.pkgdata["OptDepends"]:
@@ -190,6 +206,10 @@ class Package:
 
 			self.srcpkg.download()
 			self.srcpkg.extract()
+
+		elif not self.in_repos and not self.installed:
+			# not in AUR, not in repos (not even provided by another package), not installed: well, little we can do...
+			raise utils.UnsatisfiableDependencyError("Dependency unsatisfiable via AUR, repos or installed packages: {}".format(self.name))
 
 	def review(self):
 		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import subprocess, os, pyalpm
+import subprocess, os, pyalpm, pycman
 from distutils import spawn
 
-handle = pyalpm.Handle("/", "/var/lib/pacman")
+handle = pycman.config.init_with_config('/etc/pacman.conf') #pyalpm.Handle("/", "/var/lib/pacman")
 ldb = handle.get_localdb()
-sdb = handle.get_syncdbs()
+sdbs = handle.get_syncdbs()
 
 devnull = open(os.devnull, 'w')
 sudo = spawn.find_executable("sudo")
@@ -16,16 +16,15 @@ def execute_privileged(cmdlist):
 	else:
 		return subprocess.call(["su", "-c"] + [" ".join(cmdlist)])
 
-def is_installed(pkgname):
+def find_local_satisfier(pkgname):
 	return pyalpm.find_satisfier(ldb.pkgcache, pkgname)
 
-def installed_version(pkgname):
-	s = pyalpm.find_satisfier(ldb.pkgcache, pkgname)
-	return s.version
-
-def in_repos(pkgname):
-	r = subprocess.call(['pacman', '-Si' , pkgname], stdout=devnull, stderr=devnull)
-	return r == 0
+def find_satisfier_in_syncdbs(pkgname):
+	for db in sdbs:
+		s = pyalpm.find_satisfier(db.pkgcache, pkgname)
+		if s:
+			return s
+	return None
 
 def get_foreign_package_versions():
 	pkgs = subprocess.getoutput("pacman -Qm")

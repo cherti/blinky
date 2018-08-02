@@ -73,21 +73,29 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	else:
 		utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
 
+
 	loop = asyncio.get_event_loop()
+
+	def parse_packages_with_depcheck(pkgname, ctx=None):
+		try:
+			return Package(pkgname, ctx=ctx)
+		except utils.UnsatisfiableDependencyError as e:
+			utils.logerr(None, "Cannot build {}: {}".format(pkgname, str(e)))
+			return None
 
 	async def gen_package_obj(pkgnamelist, ctx):
 		pkgobj = []
 		futures = [
 			loop.run_in_executor(
 				None,
-				Package,
+				parse_packages_with_depcheck,
 				p, ctx
 			)
 			for p in pkgnamelist
 		]
 		for p in await asyncio.gather(*futures):
-			pkgobj.append(p)
-
+			if p:
+				pkgobj.append(p)
 		return pkgobj
 
 	packages = loop.run_until_complete(gen_package_obj(aurpkgs, ctx))
