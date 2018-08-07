@@ -7,6 +7,11 @@ setup(
     author_email='cherti@letopolis.de',
     packages=['blinky'],
     scripts=['scripts/blinky'],
+    install_requires=[
+        #'pyalpm'  # not on pypi
+        'requests',
+        'termcolor'
+    ],
     url='https://github.com/cherti/blinky',
     license='GPLv3',
     description='AUR-helper with minimal hassle',
