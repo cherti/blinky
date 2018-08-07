@@ -184,7 +184,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	if uninstalled_makedeps:
 		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
-		if not pacman.remove_packages([p for p in uninstalled_makedeps if pacman.is_installed(p.name)]):
+		if not pacman.remove_packages([p for p in uninstalled_makedeps if pacman.find_local_satisfier(p.name)]):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
 	cleanup_procedure(packages, skipped_packages, args.keep_sources)
@@ -199,7 +199,7 @@ def clean_cache(keep_installed=False):
 
 		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
 
-		if pacman.is_installed(pkgname) and keep_installed:
+		if pacman.find_local_satisfier(pkgname) and keep_installed:
 			files_to_remove += pkgfiles[:-1]
 		else:
 			files_to_remove += pkgfiles
