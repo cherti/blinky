@@ -142,6 +142,9 @@ class Package:
 			self.installed = True
 			self.name = s.name
 			self.version_installed = s.version
+
+			if pacman.find_satisfier_in_syncdbs(self.name):
+			    self.in_repos = True
 		else:
 			self.installed = False
 			s = pacman.find_satisfier_in_syncdbs(name)
