@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, asyncio, shutil
+import argparse, os, asyncio, shutil, urllib3, requests
 from collections import namedtuple
 from packaging import version
 from blinky.package_tree import Package
@@ -223,66 +223,78 @@ def clean_builddir():
 
 
 if __name__ == "__main__":
-	if args.install or args.rebuildpkg or args.rebuildtree:
-		build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
-	if args.search:
-		from termcolor import colored
-		aurdata = utils.query_aur("search", args.pkg_candidates)
-		if aurdata["resultcount"] == 0:
-			utils.logmsg(ctx.v, 0, "No results found")
-		else:
+	try:
+		if args.install or args.rebuildpkg or args.rebuildtree:
+			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
+		if args.search:
+			from termcolor import colored
+			aurdata = utils.query_aur("search", args.pkg_candidates)
+			if aurdata["resultcount"] == 0:
+				utils.logmsg(ctx.v, 0, "No results found")
+			else:
+				for pkgdata in aurdata["results"]:
+					crepo = colored('aur/', color='magenta', attrs=['bold'])
+					cname = colored(pkgdata["Name"], attrs=['bold'])
+					cversion = colored(pkgdata["Version"], color='green', attrs=['bold'])
+					print("{}{} {}".format(crepo, cname, cversion))
+					print("    " + pkgdata["Description"])
+		if args.info:
+			from blinky.templates import pkginfo
+			foundSth = False
+			for pkg in args.pkg_candidates:
+				pkgdata = utils.query_aur("info", pkg, single=True)
+				if pkgdata:
+					foundSth = True
+					print(pkginfo.format(
+							name=pkgdata.get("Name"),
+							version=pkgdata.get("Version"),
+							desc=pkgdata.get("Description"),
+							url=pkgdata.get("URL"),
+							license=", ".join(pkgdata.get("License") or ["None"]),
+							groups=", ".join(pkgdata.get("Groups") or ["None"]),
+							provides=", ".join(pkgdata.get("Provides") or ["None"]),
+							deps=", ".join(pkgdata.get("Depends") or ["None"]),
+							optdeps=", ".join(pkgdata.get("OptDepends") or ["None"]),
+							makedeps=", ".join(pkgdata.get("MakeDepends") or ["None"]),
+							conflicts=", ".join(pkgdata.get("Conflicts") or ["None"]),
+							replaces=", ".join(pkgdata.get("Replaces") or ["None"]),
+							maintainer=pkgdata.get("Maintainer"),
+							submitted=pkgdata.get("FirstSubmitted"),
+							numvotes=pkgdata.get("NumVotes"),
+							popularity=pkgdata.get("Popularity"),
+							outofdate=pkgdata.get("OutOfDate") or "No"
+							))
+
+			if not foundSth:
+				utils.logmsg(ctx.v, 0, "No results found")
+
+		if args.upgrade:
+			foreign_pkg_v = pacman.get_foreign_package_versions()
+			aurdata = utils.query_aur("info", foreign_pkg_v.keys())
+			upgradable_pkgs = []
 			for pkgdata in aurdata["results"]:
-				crepo = colored('aur/', color='magenta', attrs=['bold'])
-				cname = colored(pkgdata["Name"], attrs=['bold'])
-				cversion = colored(pkgdata["Version"], color='green', attrs=['bold'])
-				print("{}{} {}".format(crepo, cname, cversion))
-				print("    " + pkgdata["Description"])
-	if args.info:
-		from blinky.templates import pkginfo
-		foundSth = False
-		for pkg in args.pkg_candidates:
-			pkgdata = utils.query_aur("info", pkg, single=True)
-			if pkgdata:
-				foundSth = True
-				print(pkginfo.format(
-						name=pkgdata.get("Name"),
-						version=pkgdata.get("Version"),
-						desc=pkgdata.get("Description"),
-						url=pkgdata.get("URL"),
-						license=", ".join(pkgdata.get("License") or ["None"]),
-						groups=", ".join(pkgdata.get("Groups") or ["None"]),
-						provides=", ".join(pkgdata.get("Provides") or ["None"]),
-						deps=", ".join(pkgdata.get("Depends") or ["None"]),
-						optdeps=", ".join(pkgdata.get("OptDepends") or ["None"]),
-						makedeps=", ".join(pkgdata.get("MakeDepends") or ["None"]),
-						conflicts=", ".join(pkgdata.get("Conflicts") or ["None"]),
-						replaces=", ".join(pkgdata.get("Replaces") or ["None"]),
-						maintainer=pkgdata.get("Maintainer"),
-						submitted=pkgdata.get("FirstSubmitted"),
-						numvotes=pkgdata.get("NumVotes"),
-						popularity=pkgdata.get("Popularity"),
-						outofdate=pkgdata.get("OutOfDate") or "No"
-						))
+				if pkgdata["Name"] in foreign_pkg_v:
+					v_upstream = version.parse(pkgdata["Version"])
+					v_installed = version.parse(foreign_pkg_v[pkgdata["Name"]])
+					if v_upstream > v_installed:
+						upgradable_pkgs.append(pkgdata["Name"])
 
-		if not foundSth:
-			utils.logmsg(ctx.v, 0, "No results found")
+			build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
 
-	if args.upgrade:
-		foreign_pkg_v = pacman.get_foreign_package_versions()
-		aurdata = utils.query_aur("info", foreign_pkg_v.keys())
-		upgradable_pkgs = []
-		for pkgdata in aurdata["results"]:
-			if pkgdata["Name"] in foreign_pkg_v:
-				v_upstream = version.parse(pkgdata["Version"])
-				v_installed = version.parse(foreign_pkg_v[pkgdata["Name"]])
-				if v_upstream > v_installed:
-					upgradable_pkgs.append(pkgdata["Name"])
+		if args.clean:
+			clean_cache(keep_installed=True)
+			clean_builddir()
+		if args.fullclean:
+			clean_cache(keep_installed=False)
+			clean_builddir()
 
-		build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
+	except urllib3.exceptions.MaxRetryError as e:
+		msg = "Unable to connect to {}: Max retries exceeded".format(e.url)
+		utils.logerr(1, msg)
+	except requests.exceptions.ConnectTimeout as e:
+		basepath = e.request.url.split('?')[0]
+		msg = "Unable to connect to {}: Connection timeout".format(basepath)
+	except requests.exceptions.ConnectionError as e:
+		basepath = e.request.url.split('?')[0]
+		msg = "Unable to connect to {}: Reason unclear".format(basepath)
 
-	if args.clean:
-		clean_cache(keep_installed=True)
-		clean_builddir()
-	if args.fullclean:
-		clean_cache(keep_installed=False)
-		clean_builddir()
