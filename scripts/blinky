@@ -9,7 +9,8 @@ from blinky import pacman, utils
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
 primary.add_argument("-S", action='store_true', default=False, dest='install', help="Install package(s) from AUR")
-primary.add_argument("-Sr", action='store_true', default=False, dest='rebuild', help="Reinstall package(s) from AUR (including rebuild)")
+primary.add_argument("-Sr", action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
+primary.add_argument("-Srr", action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) from AUR (including rebuild)")
 primary.add_argument("-Ss", action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
 primary.add_argument("-Si", action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
@@ -33,7 +34,7 @@ ctx = Config(
 		cachedir=os.path.join(args.aur_local, 'cache'),
 		builddir=os.path.join(args.aur_local, 'build'),
 		logdir=os.path.join(args.aur_local, 'logs'),
-		rebuild=args.rebuild,
+		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
 		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
@@ -222,7 +223,7 @@ def clean_builddir():
 
 
 if __name__ == "__main__":
-	if args.install or args.rebuild:
+	if args.install or args.rebuildpkg or args.rebuildtree:
 		build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
 	if args.search:
 		from termcolor import colored

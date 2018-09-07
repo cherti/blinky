@@ -160,6 +160,13 @@ class Package:
 		self.parents           = [firstparent] if firstparent else []
 		self.built_pkgs        = []
 		self.srcpkg            = None
+
+		self.rebuild           = False
+		if ctx.rebuild == 'tree':
+			self.rebuild = True
+		elif ctx.rebuild == 'package' and not self.parents:
+			self.rebuild = True
+
 		utils.logmsg(self.ctx.v, 3, "Instantiating package {}".format(self.name))
 
 		self.pkgdata = utils.query_aur("info", self.name, single=True)
@@ -224,7 +231,7 @@ class Package:
 			utils.logmsg(self.ctx.v, 3, "{} passed review: in_repos".format(self.name))
 			return True
 
-		if self.installed and not self.ctx.rebuild:
+		if self.installed and not self.rebuild:
 			if not self.in_aur:
 				utils.logmsg(self.ctx.v, 3, "{} passed review: installed and not in aur".format(self.name))
 				return True
@@ -236,7 +243,7 @@ class Package:
 			utils.logmsg(self.ctx.v, 3, "{} passed review due to positive pre-review".format(self.name))
 			return self.srcpkg.review_passed
 
-		if self.in_aur and len(pkg_in_cache(self)) > 0 and not self.ctx.rebuild:
+		if self.in_aur and len(pkg_in_cache(self)) > 0 and not self.rebuild:
 			utils.logmsg(self.ctx.v, 3, "{} passed review: in cache".format(self.name))
 			return True
 
@@ -252,11 +259,11 @@ class Package:
 		if self.in_repos or (self.installed and not self.in_aur):
 			return True
 
-		if self.installed and self.in_aur and self.version_installed == self.version_latest and not self.ctx.rebuild:
+		if self.installed and self.in_aur and self.version_installed == self.version_latest and not self.rebuild:
 			return True
 
 		pkgs = pkg_in_cache(self)
-		if len(pkgs) > 0 and not self.ctx.rebuild:
+		if len(pkgs) > 0 and not self.rebuild:
 			self.built_pkgs.append(pkgs[0]) # we only need one of them, not all, if multiple ones with different extensions have been built
 			return True
 
