@@ -27,5 +27,6 @@ In particular the currently available options are
   * detailed package info: `blinky -Si <package> [<package> ...]`
   * package updates: `blinky -Syu`
   * clean cache: `blinky -Sc` or `blinky -Scc`
+  * explicitly rebuild packages: `blinky -Sr [<package> ...]` or `blinky -Srr [<package> ...]`
 
 Blinky will create a folder defaulting to `~/.blinky` where it builds stuff and stores built packgages.
