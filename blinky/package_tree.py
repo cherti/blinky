@@ -3,26 +3,53 @@ from blinky import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
 # to build the fully interconnected package graph
-pkg_store    = {}
-srcpkg_store = {}
+pkg_store            = {}
+srcpkg_store         = {}
+
+# the instantiated-list hold all instantiated packages to fix race
+# conditions upon instantiating afterwards by dedup
+instantiated_pkgs    = []
+
+def dedup_pkgs(ctx):
+	if len(pkg_store) != len(instantiated_pkgs):
+		dup_number = len(instantiated_pkgs) - len(pkg_store)
+		utils.logmsg(ctx.v, 3, "Deduplicating {} packages".format(dup_number))
+		name2obj = {}
+		for name, obj in instantiated_pkgs:
+			if name in name2obj:
+				# we have at least two, let's merge the tree here
+				utils.logmsg(ctx.v, 3, "Deduplicating package: {}".format(name))
+				name2obj[name].parents += obj.parents
+				for p in obj.parents:
+					if obj in p.deps:
+						p.deps.remove(obj)
+						p.deps.append(name2obj[name])
+					elif obj in p.makedeps:
+						p.makedeps.remove(obj)
+						p.makedeps.append(name2obj[name])
+			else:
+				name2obj[name] = obj
 
 
 def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	packagename = pkgname.split('>=')[0].split('=')[0]
 
 	if packagename not in pkg_store:
-		pkg_store[packagename] = Package(packagename, ctx=ctx, firstparent=parentpkg)
+		pkg = Package(packagename, ctx=ctx, firstparent=parentpkg)
+		pkg_store[packagename] = pkg
+		instantiated_pkgs.append((pkgname, pkg))
 	elif parentpkg:
 		pkg_store[packagename].parents.append(parentpkg)
 
-	return pkg_store[packagename]
+	return pkg
 
 
 def parse_src_pkg(src_id, version, tarballpath, ctx):
 	if src_id not in srcpkg_store:
-		srcpkg_store[src_id] = SourcePkg(src_id, version, tarballpath, ctx=ctx)
+		srcpkg = SourcePkg(src_id, version, tarballpath, ctx=ctx)
+		srcpkg_store[src_id] = srcpkg
 
-	return srcpkg_store[src_id]
+	return srcpkg
 
 
 def pkg_in_cache(pkg):

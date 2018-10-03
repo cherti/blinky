@@ -3,7 +3,7 @@
 import argparse, os, asyncio, shutil, urllib3, requests
 from collections import namedtuple
 from packaging import version
-from blinky.package_tree import Package
+from blinky.package_tree import Package, dedup_pkgs
 from blinky import pacman, utils
 
 parser = argparse.ArgumentParser(description="AUR package management made easy")
@@ -101,6 +101,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 
 	packages = loop.run_until_complete(gen_package_obj(aurpkgs, ctx))
 
+	dedup_pkgs(ctx)
 
 	for p in packages:
 		if not p.review():
