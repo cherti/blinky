@@ -196,7 +196,13 @@ def clean_cache(keep_installed=False):
 	pkgs = os.listdir(ctx.cachedir)
 	files_to_remove = []
 	for p in pkgs:
-		*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
+		try:
+			*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
+		except ValueError:
+			msg = "Non-package {} detected in {}. You might want to clean this up manually.".format(p, ctx.cachedir)
+			utils.logerr(None, msg)
+			continue
+
 		pkgname = "-".join(pkgnameparts)
 
 		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
