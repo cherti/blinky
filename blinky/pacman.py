@@ -10,6 +10,11 @@ sdbs = handle.get_syncdbs()
 devnull = open(os.devnull, 'w')
 sudo = spawn.find_executable("sudo")
 
+def refresh():
+	global handle, ldb, sdbs
+	handle = pycman.config.init_with_config('/etc/pacman.conf') #pyalpm.Handle("/", "/var/lib/pacman")
+	ldb, sdbs = handle.get_localdb(), handle.get_syncdbs()
+
 def execute_privileged(cmdlist):
 	if sudo:
 		return subprocess.call(["sudo"] + cmdlist)
