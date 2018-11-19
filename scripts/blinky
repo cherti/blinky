@@ -245,7 +245,8 @@ if __name__ == "__main__":
 					cname = colored(pkgdata["Name"], attrs=['bold'])
 					cversion = colored(pkgdata["Version"], color='green', attrs=['bold'])
 					print("{}{} {}".format(crepo, cname, cversion))
-					print("    " + pkgdata["Description"])
+					desc = pkgdata["Description"]
+					print("    " + (desc if desc else colored("no description provided by PKGBUILD", color='white')))
 		if args.info:
 			from blinky.templates import pkginfo
 			foundSth = False
