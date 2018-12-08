@@ -41,7 +41,7 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 	elif parentpkg:
 		pkg_store[packagename].parents.append(parentpkg)
 
-	return pkg
+	return pkg_store[packagename]
 
 
 def parse_src_pkg(src_id, version, tarballpath, ctx):
