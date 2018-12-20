@@ -135,13 +135,28 @@ class SourcePkg:
 
 		os.chdir(self.srcdir)
 
+		def save_as_reviewed_file(fname):
+			"""
+			This function saves the given file in the directory for reviewed files
+			of the current package for later comparison.
+			"""
+			d = os.path.join(self.ctx.revieweddir, self.name)
+			os.makedirs(d, exist_ok=True)
+			shutil.copyfile(fname, os.path.join(d, fname))
+
+
 		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
-		if 'y' != input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
+		if 'y' == input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
+			save_as_reviewed_file('PKGBUILD')
+		else:
 			return self.set_review_state(False)
 
-		if os.path.exists('{}.install'.format(self.name)):
-			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', '{}.install'.format(self.name)])
-			if 'y' != input('Did {}.install pass review? [y/n] '.format(self.name)).lower():
+		installfile = '{}.install'.format(self.name)
+		if os.path.exists(installfile):
+			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', installfile])
+			if 'y' == input('Did {} pass review? [y/n] '.format(installfile)).lower():
+				save_as_reviewed_file(installfile)
+			else:
 				return self.set_review_state(False)
 
 		return self.set_review_state(True)
