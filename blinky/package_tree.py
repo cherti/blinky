@@ -1,4 +1,4 @@
-import requests, subprocess, os, shutil, sys, stat, asyncio
+import requests, subprocess, os, shutil, sys, stat, asyncio, hashlib
 from blinky import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
@@ -144,20 +144,46 @@ class SourcePkg:
 			os.makedirs(d, exist_ok=True)
 			shutil.copyfile(fname, os.path.join(d, fname))
 
+		def hash_file(fname):
+			h = hashlib.sha256()
+			if os.path.exists(fname):
+				with open(fname, 'rb') as f:
+					h.update(f.read())
 
-		retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
-		if 'y' == input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
-			save_as_reviewed_file('PKGBUILD')
+			return h.hexdigest()
+
+
+		# compare both reference PKGBUILD (if existent) and new PKGBUILD
+		refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, 'PKGBUILD'))
+		newhash = hash_file('PKGBUILD')
+
+		if refhash == newhash:
+			utils.logmsg(self.ctx.v, 3, "PKGBUILD of srcpkg {} passed review: already positively reviewed".format(self.name))
 		else:
-			return self.set_review_state(False)
-
-		installfile = '{}.install'.format(self.name)
-		if os.path.exists(installfile):
-			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', installfile])
-			if 'y' == input('Did {} pass review? [y/n] '.format(installfile)).lower():
-				save_as_reviewed_file(installfile)
+			# we need review
+			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
+			if 'y' == input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
+				save_as_reviewed_file('PKGBUILD')
 			else:
 				return self.set_review_state(False)
+
+
+		# compare both reference *.install (if existent) and new *.install
+		installfile = '{}.install'.format(self.name)
+		if os.path.exists(installfile):
+
+			refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, installfile))
+			newhash = hash_file(installfile)
+
+			if refhash == newhash:
+				utils.logmsg(self.ctx.v, 3, "{} of srcpkg {} passed review: already positively reviewed".format(installfile, self.name))
+			else:
+				# we need review
+				retval = subprocess.call([os.environ.get('EDITOR') or 'nano', installfile])
+				if 'y' == input('Did {} pass review? [y/n] '.format(installfile)).lower():
+					save_as_reviewed_file(installfile)
+				else:
+					return self.set_review_state(False)
 
 		return self.set_review_state(True)
 
