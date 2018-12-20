@@ -158,7 +158,8 @@ class SourcePkg:
 		newhash = hash_file('PKGBUILD')
 
 		if refhash == newhash:
-			utils.logmsg(self.ctx.v, 3, "PKGBUILD of srcpkg {} passed review: already positively reviewed".format(self.name))
+			msg = "PKGBUILD of srcpkg {} passed review: already positively reviewed"
+			utils.logmsg(self.ctx.v, 3, msg.format(self.name))
 		else:
 			# we need review
 			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
