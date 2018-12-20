@@ -157,7 +157,7 @@ class SourcePkg:
 		refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, 'PKGBUILD'))
 		newhash = hash_file('PKGBUILD')
 
-		if refhash == newhash:
+		if refhash == newhash and not self.ctx.force_review:
 			msg = "PKGBUILD of srcpkg {} passed review: already positively reviewed"
 			utils.logmsg(self.ctx.v, 3, msg.format(self.name))
 		else:
@@ -176,7 +176,7 @@ class SourcePkg:
 			refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, installfile))
 			newhash = hash_file(installfile)
 
-			if refhash == newhash:
+			if refhash == newhash and not self.ctx.force_review:
 				utils.logmsg(self.ctx.v, 3, "{} of srcpkg {} passed review: already positively reviewed".format(installfile, self.name))
 			else:
 				# we need review
