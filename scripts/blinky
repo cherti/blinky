@@ -25,7 +25,7 @@ parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosit
 
 args = parser.parse_args()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'logdir', 'rebuild', 'v'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'rebuild', 'v'])
 
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
@@ -34,15 +34,18 @@ ctx = Config(
 		cachedir=os.path.join(args.aur_local, 'cache'),
 		builddir=os.path.join(args.aur_local, 'build'),
 		logdir=os.path.join(args.aur_local, 'logs'),
+		revieweddir=os.path.join(args.aur_local, 'reviewed'),
 		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
 		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
 os.makedirs(ctx.builddir, exist_ok=True)
 os.makedirs(ctx.logdir, exist_ok=True)
+os.makedirs(ctx.revieweddir, exist_ok=True)
 utils.logmsg(ctx.v, 2, ("builddir: {}".format(ctx.builddir)))
 utils.logmsg(ctx.v, 2, ("cachedir: {}".format(ctx.cachedir)))
 utils.logmsg(ctx.v, 2, ("makepkg-logdir: {}".format(ctx.logdir)))
+utils.logmsg(ctx.v, 2, ("dir for reviewed files: {}".format(ctx.revieweddir)))
 
 if args.buildonly:
 	utils.logmsg(ctx.v, 0, "Sources can be found at {}".format(ctx.builddir))
