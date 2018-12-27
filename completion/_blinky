@@ -1,0 +1,140 @@
+#compdef blinky
+# Copyright (C) 2018 Paul Seyfert <pseyfert.mathphys@gmail.com>
+#
+# This software is distributed under the terms of the GNU General Public
+# Licence version 3 (GPL Version 3), copied verbatim in the file "LICENSE".
+
+# heavily inspired by the _pacman completion
+
+# options for passing to _arguments: main pacman commands
+_blinky_opts_commands=(
+	'(-h --help)'{-h,--help}'[Display usage]'
+)
+
+_blinky_opts_common=(
+	'(-v --verbose)'{-v,--verbose}'[Be more verbose]'
+	'--local-path[Local path for building and cache]:cache_location:_files -/'
+)
+
+_blinky_keep_opts() {
+  local -a keepopts
+  keepopts=('none:keep no sources' 'skipped:keep sources of skipped packages' 'all:keep all sources')
+  _describe 'keep source setting' keepopts
+}
+
+_blinky_opts_build=(
+  '--asdeps[If packages are installed, install them as dependencies]'
+  '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
+  '--keep-sources[Keep sources]:keep which sources:_blinky_keep_opts'
+  '--build-only[Only build, do not install anything]'
+)
+
+# options for passing to _arguments: options for --sync command
+_blinky_opts_sync_actions=(
+  '-S[Install package(s) from AUR]'
+  '-Sr[Reinstall package(s) from AUR (including rebuild)]'
+  '-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
+  '-Ss[Search for package(s) in AUR]'
+  '-Si[Get detailed info on packages in AUR]'
+  '-Syu[Upgrade all out-of-date AUR-packages]'
+  '-Sc[Clean cache of all uninstalled package files]'
+  '-Scc[Clean cache of all package files, including installed]'
+)
+
+# provides completions for packages available from repositories
+# these can be specified as either 'package' or 'repository/package'
+_blinky_completions_local_packages() {
+  local -a seq sep cmd packages repositories packages_long
+
+  packages=( $(pacman -Qm | \sed "s/ .*//") )
+
+  typeset -U packages
+  _wanted packages expl "installed non-repository packages" compadd "${(@)packages}"
+}
+
+_blinky_completions_all_packages() {
+  if [[ $#words[$CURRENT] -le 3 ]]; then
+    return 0
+  fi
+  matches=( $(blinky -complete $words[$CURRENT]) )
+  typeset -U packages
+  _wanted packages expl "packages" compadd "${(@)matches}"
+}
+
+
+# handles --sync subcommand
+_blinky_action_sync() {
+  local context state line
+  typeset -A opt_args
+
+  _arguments : \
+    "$_blinky_opts_common[@]" \
+    "$_blinky_opts_sync_actions[@]" \
+    '*:package:_blinky_completions_all_packages'
+}
+
+_blinky_action_rebuild() {
+  local context state line
+  typeset -A opt_args
+
+  _arguments : \
+    "$_blinky_opts_common[@]" \
+    "$_blinky_opts_build[@]" \
+    '*:package:_blinky_completions_local_packages'
+}
+
+# main dispatcher
+_blinky_zsh_comp() {
+  local -a args cmds;
+  local tmp
+  #     ${(M)words:#-*} : array of all the elements of words, that match -*
+  #   ${...............#-} remove leading -
+  # ${....................:#-*} : array of all the elements that don't match -*
+  # i.e. args is all that starts with a single - and that single - removed
+
+  args=( ${${${(M)words:#-*}#-}:#-*} )
+  for tmp in $words; do
+    cmds+=("${${_blinky_opts_commands[(r)*$tmp\[*]%%\[*}#*\)}")
+  done
+  local s_is_at=${words[(i)-$args[1]]}
+  case $args in
+    Sc*)
+      [[ $CURRENT -eq $s_is_at ]] && _blinky_action_sync || _arguments : \
+        "$_blinky_opts_common[@]"
+      ;;
+    Ss)
+      # TODO buggy
+      _arguments : \
+        "$_blinky_opts_common[@]" \
+        "$_blinky_opts_sync_modifiers[@]" \
+        '*:search text: _message "foo"'
+      ;;
+    Sr*)
+      [[ $CURRENT -eq $s_is_at ]] && _blinky_action_sync || _blinky_action_rebuild
+      ;;
+    Si)
+      _blinky_completions_all_packages
+      ;;
+    Syu)
+      _arguments : \
+        "$_blinky_opts_common[@]"
+      ;;
+    S*)
+      _blinky_action_sync
+      ;;
+    *)
+      case ${(M)words:#--*} in
+        *--help*)
+          return 0;
+        ;;
+        *)
+          _arguments : \
+            "$_blinky_opts_commands[@]" \
+            "$_blinky_opts_sync_actions[@]"
+        ;;
+      esac
+    ;;
+  esac
+}
+
+_blinky_zsh_comp "$@"
