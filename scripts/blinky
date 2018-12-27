@@ -12,6 +12,7 @@ primary.add_argument("-S", action='store_true', default=False, dest='install', h
 primary.add_argument("-Sr", action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
 primary.add_argument("-Srr", action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) and dependencies from AUR (including rebuild)")
 primary.add_argument("-Ss", action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
+primary.add_argument("-complete", action='store_true', default=False, dest='complete', help="completion helper")
 primary.add_argument("-Si", action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
 primary.add_argument("-Sc", action='store_true', default=False, dest='clean', help="Clean cache of all uninstalled package files")
@@ -322,7 +323,13 @@ if __name__ == "__main__":
 			utils.exit_if_root()
 			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
 			cleanup_makedeps()
-
+		if args.complete:
+			aurdata = utils.query_aur("search", args.pkg_candidates)
+			import re
+			exp = re.compile(args.pkg_candidates[0] + '.*')
+			for pkgdata in aurdata["results"]:
+				if exp.match(pkgdata["Name"]):
+					print(pkgdata["Name"])
 		if args.search:
 			from termcolor import colored
 			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates)
