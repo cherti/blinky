@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, asyncio, shutil, urllib3, requests
+import argparse, os, asyncio, shutil, urllib3, requests, concurrent
 from collections import namedtuple
 from packaging import version
 from blinky.package_tree import Package, dedup_pkgs
@@ -80,7 +80,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
 
 
-	loop = asyncio.get_event_loop()
 
 	def parse_packages_with_depcheck(pkgname, ctx=None):
 		try:
@@ -89,22 +88,14 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			utils.logerr(None, "Cannot build {}: {}".format(pkgname, str(e)))
 			return None
 
-	async def gen_package_obj(pkgnamelist, ctx):
-		pkgobj = []
-		futures = [
-			loop.run_in_executor(
-				None,
-				parse_packages_with_depcheck,
-				p, ctx
-			)
-			for p in pkgnamelist
-		]
-		for p in await asyncio.gather(*futures):
-			if p:
-				pkgobj.append(p)
-		return pkgobj
 
-	packages = loop.run_until_complete(gen_package_obj(aurpkgs, ctx))
+	with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
+		pkg_parsers = []
+		for p in aurpkgs:
+			pkg_parsers.append(e.submit(parse_packages_with_depcheck, p, ctx))
+
+		packages = [parser.result() for parser in pkg_parsers if parser.result()]
+
 
 	dedup_pkgs(ctx)
 

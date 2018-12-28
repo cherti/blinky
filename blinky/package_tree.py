@@ -243,35 +243,23 @@ class Package:
 		if self.in_aur:
 			self.version_latest    = self.pkgdata['Version']
 
-			# concurrently build dependency tree
-			loop = asyncio.new_event_loop()
-
 			depnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("Depends") or []]
 			makedepnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("MakeDepends") or []]
 
-			async def parse_dependencies(alldeps):
-				deps = []
-				makedeps = []
-				futures = [
-					loop.run_in_executor(
-						None,
-						parse_dep_pkg,
-						pname, self.ctx, self
-					)
-					for pname in alldeps
-				]
-				for p in await asyncio.gather(*futures):
-					if p.name in depnames:
-						deps.append(p)
-					else:
-						makedeps.append(p)
-
-				return deps, makedeps
-
 			try:
-				self.deps, self.makedeps = loop.run_until_complete(parse_dependencies(depnames + makedepnames))
+				with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
+					dep_pkgs_parser, makedep_pkgs_parser = [], []
+					for depname in depnames:
+						dep_pkgs_parser.append(e.submit(parse_dep_pkg, depname, self.ctx, self))
+
+					for makedepname in makedepnames:
+						makedep_pkgs_parser.append(e.submit(parse_dep_pkg, makedepname, self.ctx, self))
+
+					self.deps = [p.result() for p in dep_pkgs_parser]
+					self.makedeps = [p.result() for p in makedep_pkgs_parser]
 			except utils.UnsatisfiableDependencyError as e:
 				raise utils.UnsatisfiableDependencyError(str(e) + " for {}".format(self.name))
+
 
 			if "OptDepends" in self.pkgdata:
 				for pkg in self.pkgdata["OptDepends"]:
