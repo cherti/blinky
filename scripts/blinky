@@ -213,8 +213,12 @@ def clean_cache(keep_installed=False):
 
 		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
 
-		if pacman.find_local_satisfier(pkgname) and keep_installed:
-			files_to_remove += pkgfiles[:-1]
+		s = pacman.find_local_satisfier(pkgname)
+		if s and keep_installed:
+			installed_package_prefix = "{}-{}-{}-{}.pkg.".format(pkgname, s.version, pkgrel, pkgarch)
+			for f in files_to_remove:
+				if f.startswith(installed_package_prefix):
+					files_to_remove.remove(f)
 		else:
 			files_to_remove += pkgfiles
 
