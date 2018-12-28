@@ -1,4 +1,4 @@
-import requests, subprocess, os, shutil, sys, stat, asyncio, hashlib
+import requests, subprocess, os, shutil, sys, stat, asyncio, hashlib, concurrent
 from blinky import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
@@ -45,13 +45,8 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 
 
 def parse_src_pkg(src_id, version, tarballpath, ctx):
-	if src_id in srcpkg_store:
-		return srcpkg_store[src_id]
-	else:
-		srcpkg = SourcePkg(src_id, version, tarballpath, ctx=ctx)
-		srcpkg_store[src_id] = srcpkg
-		return srcpkg
-
+	if src_id not in srcpkg_store:
+		srcpkg_store[src_id] = SourcePkg(src_id, version, tarballpath, ctx=ctx)
 
 
 def pkg_in_cache(pkg):
@@ -248,7 +243,6 @@ class Package:
 		if self.in_aur:
 			self.version_latest    = self.pkgdata['Version']
 
-
 			# concurrently build dependency tree
 			loop = asyncio.new_event_loop()
 
@@ -283,14 +277,25 @@ class Package:
 				for pkg in self.pkgdata["OptDepends"]:
 					self.optdeps.append(pkg)
 
-			self.srcpkg = parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["Version"], self.pkgdata["URLPath"], ctx=ctx)
+			parse_src_pkg(self.pkgdata["PackageBase"], self.pkgdata["Version"], self.pkgdata["URLPath"], ctx=ctx)
 
-			self.srcpkg.download()
-			self.srcpkg.extract()
 
 		elif not self.in_repos and not self.installed:
 			# not in AUR, not in repos (not even provided by another package), not installed: well, little we can do...
 			raise utils.UnsatisfiableDependencyError("Dependency unsatisfiable via AUR, repos or installed packages: {}".format(self.name))
+
+
+	def get_src(self):
+		if self.in_aur:
+			self.srcpkg = srcpkg_store[self.pkgdata["PackageBase"]]
+			self.srcpkg.download()
+			self.srcpkg.extract()
+
+		e = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+		for d in self.deps + self.makedeps:
+			e.submit(d.get_src)
+		e.shutdown(wait=True)
+
 
 	def review(self):
 		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))
