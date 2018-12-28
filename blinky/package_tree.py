@@ -45,11 +45,13 @@ def parse_dep_pkg(pkgname, ctx, parentpkg=None):
 
 
 def parse_src_pkg(src_id, version, tarballpath, ctx):
-	if src_id not in srcpkg_store:
+	if src_id in srcpkg_store:
+		return srcpkg_store[src_id]
+	else:
 		srcpkg = SourcePkg(src_id, version, tarballpath, ctx=ctx)
 		srcpkg_store[src_id] = srcpkg
+		return srcpkg
 
-	return srcpkg
 
 
 def pkg_in_cache(pkg):
