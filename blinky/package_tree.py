@@ -158,8 +158,8 @@ class SourcePkg:
 			newhash = hash_file(fname)
 
 			if refhash == newhash and not self.ctx.force_review:
-				msg = "{} of srcpkg {} passed review: already positively reviewed"
-				utils.logmsg(self.ctx.v, 3, msg.format(fname, self.name))
+				msg = "{} of srcpkg {} passed review: already positively reviewed previously"
+				utils.logmsg(self.ctx.v, 0, msg.format(fname, self.name))
 				return True
 			else:
 				# we need review, first diff it if reference exists
@@ -196,18 +196,18 @@ class SourcePkg:
 								subprocess.call(diffcmd + [fname, ref_file])
 								print()
 
-								padding = " "*(int(diffwidth/2)-len("new file <== ")-1)
-								subscript = "{}new file <== | ==> last positively reviewed file".format(padding)
+								padding = " "*(int(diffwidth/2)-9)
+								subscript = "{}new <== | ==> previously positively reviewed".format(padding)
 								print(colored(subscript, attrs=['bold']))
 
 						else:
 							utils.logmsg(0, 0, "No reference available, cannot provide diff")
 
-					user_verdict = input("(P)ass review, (F)ail review, (E)dit, (D)iff?: [p/f/e/d] ").lower()
+					msg_prefix = "{} of package {}: ".format(fname, self.name)
+					user_verdict = input(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff?: [p/f/e/d] ").lower()
 
 
 		positively_reviewed = review_file('PKGBUILD')
-		print(positively_reviewed)
 		if not positively_reviewed:
 			return self.set_review_state(False)
 
