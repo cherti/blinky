@@ -2,13 +2,14 @@ from distutils.core import setup
 
 setup(
     name='blinky',
-    version='0.10.1',
+    version='0.11',
     author='Jonas Große Sundrup',
     author_email='cherti@letopolis.de',
     packages=['blinky'],
     scripts=['scripts/blinky'],
     install_requires=[
         #'pyalpm'  # not on pypi
+		#'colordiff'  # not on pypi
         'requests',
         'termcolor'
     ],
