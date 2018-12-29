@@ -1,4 +1,5 @@
 import requests, subprocess, os, shutil, sys, stat, asyncio, hashlib, concurrent
+from termcolor import colored
 from blinky import pacman, utils
 
 # pkg_store holds all packages so that we have all package-objects
@@ -149,41 +150,75 @@ class SourcePkg:
 
 			return h.hexdigest()
 
+		def review_file(fname):
+			ref_file = os.path.join(self.ctx.revieweddir, self.name, fname)
+			# compare both reference PKGBUILD (if existent) and new PKGBUILD
 
-		# compare both reference PKGBUILD (if existent) and new PKGBUILD
-		refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, 'PKGBUILD'))
-		newhash = hash_file('PKGBUILD')
-
-		if refhash == newhash and not self.ctx.force_review:
-			msg = "PKGBUILD of srcpkg {} passed review: already positively reviewed"
-			utils.logmsg(self.ctx.v, 3, msg.format(self.name))
-		else:
-			# we need review
-			retval = subprocess.call([os.environ.get('EDITOR') or 'nano', 'PKGBUILD'])
-			if 'y' == input('Did PKGBUILD for {} pass review? [y/n] '.format(self.name)).lower():
-				save_as_reviewed_file('PKGBUILD')
-			else:
-				return self.set_review_state(False)
-
-
-		# compare both reference *.install (if existent) and new *.install
-		installfile = '{}.install'.format(self.name)
-		if os.path.exists(installfile):
-
-			refhash = hash_file(os.path.join(self.ctx.revieweddir, self.name, installfile))
-			newhash = hash_file(installfile)
+			refhash = hash_file(ref_file)
+			newhash = hash_file(fname)
 
 			if refhash == newhash and not self.ctx.force_review:
-				utils.logmsg(self.ctx.v, 3, "{} of srcpkg {} passed review: already positively reviewed".format(installfile, self.name))
+				msg = "{} of srcpkg {} passed review: already positively reviewed"
+				utils.logmsg(self.ctx.v, 3, msg.format(fname, self.name))
+				return True
 			else:
-				# we need review
-				retval = subprocess.call([os.environ.get('EDITOR') or 'nano', installfile])
-				if 'y' == input('Did {} pass review? [y/n] '.format(installfile)).lower():
-					save_as_reviewed_file(installfile)
+				# we need review, first diff it if reference exists
+				user_verdict = None
+				if os.path.exists(ref_file):
+					user_verdict = 'd'  # diff
 				else:
-					return self.set_review_state(False)
+					user_verdict = 'e'  # edit (display with direct editing option)
+
+				while True:
+					if user_verdict == 'p':  # file passed review
+						save_as_reviewed_file(fname)
+						return True
+					elif user_verdict == 'f':  # file failed review
+						return False
+					elif user_verdict == 'e':  # user decides to edit
+						subprocess.call([os.environ.get('EDITOR') or 'nano', fname])
+					elif user_verdict == 'd':  # user decides to diff
+						if os.path.exists(ref_file):
+
+							print()
+							if self.ctx.difftool:
+								try:
+									subprocess.call([self.ctx.difftool, fname, ref_file])
+								except Exception as e:
+									utils.logerr(4, "Error using {} for diff: {}".format(self.ctx.difftool, e))
+							else:
+								with open(fname, 'r') as f:
+									max_linelength = max([len(line) for line in f.read().strip().split('\n')])
+
+								diffwidth = min(2*max_linelength, os.get_terminal_size().columns)
+								diffcmd = ["colordiff", "--side-by-side", "--left-column", "--width={}".format(diffwidth)]
+
+								subprocess.call(diffcmd + [fname, ref_file])
+								print()
+
+								padding = " "*(int(diffwidth/2)-len("new file <== ")-1)
+								subscript = "{}new file <== | ==> last positively reviewed file".format(padding)
+								print(colored(subscript, attrs=['bold']))
+
+						else:
+							utils.logmsg(0, 0, "No reference available, cannot provide diff")
+
+					user_verdict = input("(P)ass review, (F)ail review, (E)dit, (D)iff?: [p/f/e/d] ").lower()
+
+
+		positively_reviewed = review_file('PKGBUILD')
+		print(positively_reviewed)
+		if not positively_reviewed:
+			return self.set_review_state(False)
+
+		installfile = '{}.install'.format(self.name)
+		if os.path.exists(installfile):
+			positively_reviewed = review_file('PKGBUILD')
+			if not positively_reviewed:
+				return self.set_review_state(False)
 
 		return self.set_review_state(True)
+
 
 	def cleanup(self):
 		if self.srcdir:
