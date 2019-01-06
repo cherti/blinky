@@ -270,7 +270,19 @@ class Package:
 
 		utils.logmsg(self.ctx.v, 3, "Instantiating package {}".format(self.name))
 
-		self.pkgdata = utils.query_aur("info", self.name, single=True)
+		try:
+			self.pkgdata = utils.query_aur("info", self.name, single=True)
+		except utils.APIError as e:
+
+			msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"
+			if e.type == 'ratelimit':
+				msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
+			elif e.type == 'unavailable':
+				msg = "Dependency unsatisfiable due to rate limit on AUR-API, try again tomorrow: {}"
+
+			raise utils.UnsatisfiableDependencyError(msg.format(self.name))
+
+
 		self.in_aur = not self.in_repos and self.pkgdata
 
 		utils.logmsg(self.ctx.v, 4, 'Package details: {}; {}; {}; {}'.format(name, "installed" if self.installed else "not installed", "in repos" if self.in_repos else "not in repos", "in AUR" if self.in_aur else "not in AUR"))

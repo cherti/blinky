@@ -13,6 +13,12 @@ def UnknownAURQueryType(Exception):
 class UnsatisfiableDependencyError(Exception):
 	pass
 
+class APIError(Exception):
+	def __init__(self, msg, type):
+		self.message = msg
+		self.type = type
+
+
 def logerr(code, msg):
 	print(termcolor.colored(" !> {}".format(msg), color='red'), file=sys.stderr)
 	if code:
@@ -43,6 +49,11 @@ def query_aur(query_type, arg, single=False):
 
 	arg_type = "arg[]" if query_type == "info" else "arg"
 	r = requests.get("https://aur.archlinux.org/rpc/", params={"type": query_type, "v":5, arg_type:arg})
+	if r.status_code == 429:
+		raise APIError("Rate limit of AUR-API hit", "ratelimit")
+	elif r.status_code == 503:
+		raise APIError("AUR-API currently not available", "unavailable")
+
 	aurdata = r.json()
 	if single:
 		if type == "info" and aurdata["resultcount"] > 1:
@@ -53,6 +64,16 @@ def query_aur(query_type, arg, single=False):
 			return None
 	else:
 		return aurdata
+
+
+def query_aur_exit_on_error(query_type, arg, single=False):
+	try:
+		return query_aur(query_type, arg, single=single)
+	except APIError as e:
+		if e.type == 'ratelimit':
+			logerr(5, "Your IP seems to be ratelimited by the AUR-API. Try again tomorrow.")
+		elif e.type == 'unavailable':
+			logerr(6, "AUR-API currently unavailable, try again later.")
 
 
 def check_in_aur(pkgs):
