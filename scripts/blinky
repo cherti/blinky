@@ -238,6 +238,7 @@ def clean_builddir():
 if __name__ == "__main__":
 	try:
 		if args.install or args.rebuildpkg or args.rebuildtree:
+			utils.exit_if_root()
 			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
 		if args.search:
 			from termcolor import colored
@@ -283,6 +284,8 @@ if __name__ == "__main__":
 				utils.logmsg(ctx.v, 0, "No results found")
 
 		if args.upgrade:
+			utils.exit_if_root()
+
 			utils.logmsg(ctx.v, 0, "Checking for updates against AUR")
 			foreign_pkg_v = pacman.get_foreign_package_versions()
 			aurdata = utils.query_aur_exit_on_error("info", foreign_pkg_v.keys())

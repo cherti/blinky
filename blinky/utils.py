@@ -33,6 +33,16 @@ def logmsg(verbosity_level, required_level, msg):
 			print(" :: {}".format(msg))
 
 
+def exit_if_root():
+	"""
+	As makepkg will refuse to run as root, we can
+	early exit on all operations that might call makepkg.
+	"""
+	if os.getuid() == 0:
+		logmsg(0, 0, "blinky cannot not do this as root, please run it as an unprivileged user.")
+		sys.exit()	
+
+
 def delete_onerror(func, path, excinfo):
 	os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
 	if os.path.isdir(path):
