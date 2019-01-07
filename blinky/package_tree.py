@@ -233,6 +233,7 @@ class SourcePkg:
 class Package:
 
 	def __init__(self, name, ctx=None, firstparent=None, aurdata=None, debug=False):
+		print("----->", name, type(name))
 		self.ctx               = ctx
 		self.name              = name
 		self.installed         = None
