@@ -78,21 +78,21 @@ def query_aur_exit_on_error(query_type, arg, single=False):
 
 def check_in_aur(pkgs):
 	r = query_aur("info", pkgs)
-	if r["resultcount"] == len(pkgs):
-		return pkgs, [], []
 
 	aurpkgs, repopkgs = [], []
+	pkg2aurdata = {}
 	for pkg in r["results"]:
 		aurpkgs.append(pkg["Name"])
 		pkgs.remove(pkg["Name"])
+		pkg2aurdata[pkg["Name"]] = pkg
 
 	for pkg in pkgs:
 		if pacman.find_satisfier_in_syncdbs(pkg):
 			repopkgs.append(pkg)
 			pkgs.remove(pkg)
 
-	# return aurpkgs, repopkgs, not_found_anywhere_pkgs
-	return aurpkgs, repopkgs, pkgs
+	# return aurpkgs, repopkgs, not_found_anywhere_pkgs, aurdata for aurpkgs
+	return aurpkgs, repopkgs, pkgs, pkg2aurdata
 
 
 def install_built_packages(pkgs):

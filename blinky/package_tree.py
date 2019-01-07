@@ -32,11 +32,11 @@ def dedup_pkgs(ctx):
 				name2obj[name] = obj
 
 
-def parse_dep_pkg(pkgname, ctx, parentpkg=None):
+def parse_dep_pkg(pkgname, ctx, parentpkg=None, aurdata=None):
 	packagename = pkgname.split('>=')[0].split('=')[0]
 
 	if packagename not in pkg_store:
-		pkg = Package(packagename, ctx=ctx, firstparent=parentpkg)
+		pkg = Package(packagename, ctx=ctx, firstparent=parentpkg, aurdata=aurdata)
 		pkg_store[packagename] = pkg
 		instantiated_pkgs.append((pkgname, pkg))
 	elif parentpkg:
@@ -232,7 +232,7 @@ class SourcePkg:
 
 class Package:
 
-	def __init__(self, name, ctx=None, firstparent=None, debug=False):
+	def __init__(self, name, ctx=None, firstparent=None, aurdata=None, debug=False):
 		self.ctx               = ctx
 		self.name              = name
 		self.installed         = None
@@ -270,18 +270,21 @@ class Package:
 
 		utils.logmsg(self.ctx.v, 3, "Instantiating package {}".format(self.name))
 
-		try:
-			self.pkgdata = utils.query_aur("info", self.name, single=True)
-		except utils.APIError as e:
+		self.pkgdata = None
+		if aurdata:
+			self.pkgdata = aurdata
+		else:
+			try:
+				self.pkgdata = utils.query_aur("info", self.name, single=True)
+			except utils.APIError as e:
 
-			msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"
-			if e.type == 'ratelimit':
-				msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
-			elif e.type == 'unavailable':
-				msg = "Dependency unsatisfiable due to rate limit on AUR-API, try again tomorrow: {}"
+				msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"
+				if e.type == 'ratelimit':
+					msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
+				elif e.type == 'unavailable':
+					msg = "Dependency unsatisfiable due to rate limit on AUR-API, try again tomorrow: {}"
 
-			raise utils.UnsatisfiableDependencyError(msg.format(self.name))
-
+				raise utils.UnsatisfiableDependencyError(msg.format(self.name))
 
 		self.in_aur = not self.in_repos and self.pkgdata
 
@@ -293,14 +296,18 @@ class Package:
 			depnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("Depends") or []]
 			makedepnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("MakeDepends") or []]
 
+			_, _, _, aurdata = utils.check_in_aur(depnames + makedepnames)
+
 			try:
 				with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
 					dep_pkgs_parser, makedep_pkgs_parser = [], []
 					for depname in depnames:
-						dep_pkgs_parser.append(e.submit(parse_dep_pkg, depname, self.ctx, self))
+						aurpkgdata = aurdata[depname] if depname in aurdata else None
+						dep_pkgs_parser.append(e.submit(parse_dep_pkg, depname, self.ctx, self, aurpkgdata))
 
 					for makedepname in makedepnames:
-						makedep_pkgs_parser.append(e.submit(parse_dep_pkg, makedepname, self.ctx, self))
+						aurpkgdata = aurdata[depname] if depname in aurdata else None
+						makedep_pkgs_parser.append(e.submit(parse_dep_pkg, makedepname, self.ctx, self, aurpkgdata))
 
 					self.deps = [p.result() for p in dep_pkgs_parser]
 					self.makedeps = [p.result() for p in makedep_pkgs_parser]
