@@ -93,6 +93,7 @@ def check_in_aur(pkgs):
 	pkg2aurdata = {}
 	for pkg in r["results"]:
 		aurpkgs.append(pkg["Name"])
+		print("---->", pkg["Name"], pkgs)
 		pkgs.remove(pkg["Name"])
 		pkg2aurdata[pkg["Name"]] = pkg
 
