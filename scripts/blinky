@@ -283,6 +283,7 @@ if __name__ == "__main__":
 				utils.logmsg(ctx.v, 0, "No results found")
 
 		if args.upgrade:
+			utils.logmsg(ctx.v, 0, "Checking for updates against AUR")
 			foreign_pkg_v = pacman.get_foreign_package_versions()
 			aurdata = utils.query_aur_exit_on_error("info", foreign_pkg_v.keys())
 			upgradable_pkgs = []
