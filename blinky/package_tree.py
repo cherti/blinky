@@ -306,7 +306,7 @@ class Package:
 						dep_pkgs_parser.append(e.submit(parse_dep_pkg, depname, self.ctx, self, aurpkgdata))
 
 					for makedepname in makedepnames:
-						aurpkgdata = aurdata[depname] if depname in aurdata else None
+						aurpkgdata = aurdata[makedepname] if makedepname in aurdata else None
 						makedep_pkgs_parser.append(e.submit(parse_dep_pkg, makedepname, self.ctx, self, aurpkgdata))
 
 					self.deps = [p.result() for p in dep_pkgs_parser]
