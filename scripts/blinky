@@ -136,6 +136,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(p.name for p in md_aur)))
 		build_packages_from_aur([p.name for p in md_aur], install_as_dep=True)
 
+	pacman.refresh()
 	skipped_due_to_makedep_not_installed = []
 	for p in packages:
 		if not p.check_makedeps_installed():
