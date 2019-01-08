@@ -441,7 +441,7 @@ class Package:
 				makedeps.union(d.get_makedeps())
 			return makedeps
 
-	def check_makedeps_installed():
+	def check_makedeps_installed(self):
 		md = self.get_makedeps()
 		for m in md:
 		# for every makedep...
