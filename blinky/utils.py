@@ -40,7 +40,7 @@ def exit_if_root():
 	"""
 	if os.getuid() == 0:
 		logmsg(0, 0, "blinky cannot not do this as root, please run it as an unprivileged user.")
-		sys.exit()	
+		sys.exit()
 
 
 def delete_onerror(func, path, excinfo):
