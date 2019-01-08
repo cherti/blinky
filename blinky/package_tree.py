@@ -441,6 +441,18 @@ class Package:
 				makedeps.union(d.get_makedeps())
 			return makedeps
 
+	def check_makedeps_installed():
+		md = self.get_makedeps()
+		for m in md:
+		# for every makedep...
+			if not md.installed:
+			# ...if it has not been installed anyways...
+				if not pacman.find_local_satisfier(m.name):
+					# ...check if it is installed now...
+					return False  # ...otherwise return failure
+
+		return True
+
 	def get_built_pkgs(self):
 		pkgs = set(self.built_pkgs)
 		for d in self.deps:
