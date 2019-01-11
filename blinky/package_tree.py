@@ -70,27 +70,32 @@ class SourcePkg:
 		self.tarballname   = tarballpath.split('/')[-1]
 		self.reviewed      = False
 		self.review_passed = False
+		self.downloaded    = False
 		self.built         = False
 		self.build_success = False
 		self.srcdir        = None
 		utils.logmsg(self.ctx.v, 3, "Instantiating source-pkg {}".format(self.name))
 
 
-	def download(self):
-		os.chdir(self.ctx.builddir)
-		r = requests.get(self.tarballpath)
-		with open(self.tarballname, 'wb') as tarball:
-			tarball.write(r.content)
+	def get(self):
+		if not self.downloaded:
+			self.downloaded = True
 
-	def extract(self):
-		retval = subprocess.call(['tar', '-xzf', self.tarballname])
-		if retval != 0:
-			utils.logerr(None, "Couldn't extract tarball for {}".format(self.name))
-
-		if os.path.exists(self.tarballname):
-			os.remove(self.tarballname)
-		self.srcdir = os.path.join(self.ctx.builddir, self.name)
-
+			# download
+			os.chdir(self.ctx.builddir)
+			r = requests.get(self.tarballpath)
+			with open(self.tarballname, 'wb') as tarball:
+				tarball.write(r.content)
+	
+			# extract
+			retval = subprocess.call(['tar', '-xzf', self.tarballname])
+			if retval != 0:
+				utils.logerr(None, "Couldn't extract tarball for {}".format(self.name))
+	
+			if os.path.exists(self.tarballname):
+				os.remove(self.tarballname)
+			self.srcdir = os.path.join(self.ctx.builddir, self.name)
+	
 
 
 
@@ -330,8 +335,7 @@ class Package:
 	def get_src(self):
 		if self.in_aur:
 			self.srcpkg = srcpkg_store[self.pkgdata["PackageBase"]]
-			self.srcpkg.download()
-			self.srcpkg.extract()
+			self.srcpkg.get()
 
 		e = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 		for d in self.deps + self.makedeps:
