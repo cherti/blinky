@@ -53,7 +53,12 @@ _blinky_completions_local_packages() {
 }
 
 _blinky_completions_all_packages() {
-  if [[ $#words[$CURRENT] -le 3 || $words[$CURRENT] = -* ]]; then
+  local -i minimum_package_name_length
+  # steer minimum package name length for launching package search
+  # set with:
+  # zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
+  zstyle -s :completion:expand-word:complete:blinky:pkgcomp: numbers minimum_package_name_length || minimum_package_name_length=4
+  if [[ $#words[$CURRENT] -lt $minimum_package_name_length || $words[$CURRENT] = -* ]]; then
     return 0
   fi
   matches=( $(blinky -complete $words[$CURRENT]) )
