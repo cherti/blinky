@@ -178,7 +178,7 @@ class SourcePkg:
 					if user_verdict == 'p':  # file passed review
 						save_as_reviewed_file(fname)
 						return True
-					elif user_verdict == 'f':  # file failed review
+					elif user_verdict in ['f', 's']:  # file failed review or was skipped
 						return False
 					elif user_verdict == 'e':  # user decides to edit
 						subprocess.call([os.environ.get('EDITOR') or 'nano', fname])
@@ -209,7 +209,7 @@ class SourcePkg:
 							utils.logmsg(0, 0, "No reference available, cannot provide diff")
 
 					msg_prefix = "{} of package {}: ".format(fname, self.name)
-					user_verdict = input(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff?: [p/f/e/d] ").lower()
+					user_verdict = input(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff, (S)kip?: [p/f/e/d/s] ").lower()
 
 
 		positively_reviewed = review_file('PKGBUILD')
