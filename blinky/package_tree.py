@@ -398,10 +398,10 @@ class Package:
 			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
 			return False
 
-		pkgext = os.environ.get('PKGEXT') or 'tar.xz'
+		pkgext = os.environ.get('PKGEXT') or '.pkg.tar.xz'
 		fullpkgnames = []
-		fullpkgname_x86_64_tmpl = "{}-{}-x86_64.pkg.{}"
-		fullpkgname_any_tmpl = "{}-{}-any.pkg.{}"
+		fullpkgname_x86_64_tmpl = "{}-{}-x86_64{}"
+		fullpkgname_any_tmpl = "{}-{}-any{}"
 		if fullpkgname_x86_64_tmpl.format(self.name, self.version_latest, pkgext) in os.listdir(self.srcpkg.srcdir):
 			fullpkgnames.append(fullpkgname_x86_64_tmpl.format(self.name, self.version_latest, pkgext))
 		elif fullpkgname_any_tmpl.format(self.name, self.version_latest, pkgext) in os.listdir(self.srcpkg.srcdir):
