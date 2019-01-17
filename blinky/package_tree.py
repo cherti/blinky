@@ -118,8 +118,8 @@ class SourcePkg:
 
 		if r != 0:
 			with open(stdoutlogfile, 'a') as outlog, open(stderrlogfile, 'a') as errlog:
-				print("\nexit code: {}".format(self.name, r), file=outlog)
-				print("\nexit code: {}".format(self.name, r), file=errlog)
+				print("\nexit code: {}".format(r), file=outlog)
+				print("\nexit code: {}".format(r), file=errlog)
 			self.build_success = False
 			return False
 		else:
