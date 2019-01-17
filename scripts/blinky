@@ -18,6 +18,7 @@ primary.add_argument("-Sc", action='store_true', default=False, dest='clean', he
 primary.add_argument("-Scc", action='store_true', default=False, dest='fullclean', help="Clean cache of all package files, including installed")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--force-review", action='store_true', default=False, dest='force_review', help="Force review even if exact copies of the files have already been reviewed positively")
+parser.add_argument("--keep-builddeps", action='store_true', default=False, dest='keep_builddeps', help="Do not uninstall previously uninstalled makedeps after building")
 parser.add_argument("--local-path", action='store', default='~/.blinky', dest='aur_local', help="Local path for building and cache")
 parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none', 'skipped', for keeping skipped packages only, or 'all'")
 parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
@@ -195,7 +196,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		else:
 			utils.logmsg(ctx.v, 0, "No packages built, nothing to install")
 
-	if uninstalled_makedeps:
+	if uninstalled_makedeps and not args.keep_builddeps:
 		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
 		pacman.refresh()
 		if not pacman.remove_packages([p.name for p in uninstalled_makedeps if pacman.find_local_satisfier(p.name)]):
