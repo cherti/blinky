@@ -209,7 +209,7 @@ class SourcePkg:
 							utils.logmsg(0, 0, "No reference available, cannot provide diff")
 
 					msg_prefix = "{} of package {}: ".format(fname, self.name)
-					user_verdict = input(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff, (S)kip?: [p/f/e/d/s] ").lower()
+					user_verdict = utils.getchar(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff, (S)kip?: [p/f/e/d/s] ").lower()
 
 
 		positively_reviewed = review_file('PKGBUILD')

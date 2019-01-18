@@ -107,3 +107,18 @@ def check_in_aur(pkgs):
 
 def install_built_packages(pkgs):
 	print("would install now: {}".format(pkgs.join(", ")))
+
+
+def getchar(msg):
+	import tty, termios
+	sys.stdout.write(msg)
+	sys.stdout.flush()
+	fd = sys.stdin.fileno()
+	old_settings = termios.tcgetattr(fd)
+	try:
+		tty.setraw(fd)
+		ch = sys.stdin.read(1)
+	finally:
+		termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+	print()
+	return ch
