@@ -86,16 +86,16 @@ class SourcePkg:
 			r = requests.get(self.tarballpath)
 			with open(self.tarballname, 'wb') as tarball:
 				tarball.write(r.content)
-	
+
 			# extract
 			retval = subprocess.call(['tar', '-xzf', self.tarballname])
 			if retval != 0:
 				utils.logerr(None, "Couldn't extract tarball for {}".format(self.name))
-	
+
 			if os.path.exists(self.tarballname):
 				os.remove(self.tarballname)
 			self.srcdir = os.path.join(self.ctx.builddir, self.name)
-	
+
 
 
 
