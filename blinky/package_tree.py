@@ -409,7 +409,7 @@ class Package:
 		elif fullpkgname_any_tmpl.format(self.name, self.version_latest, pkgext) in os.listdir(self.srcpkg.srcdir):
 			fullpkgnames.append(fullpkgname_any_tmpl.format(self.name, self.version_latest, pkgext))
 		else:
-			fullpkgnames = [p for p in os.listdir(self.srcpkg.srcdir) if p.endswith('.pkg.{}'.format(pkgext))]
+			fullpkgnames = [p for p in os.listdir(self.srcpkg.srcdir) if p.endswith(pkgext)]
 
 		if fullpkgnames:
 			for fpn in fullpkgnames:
