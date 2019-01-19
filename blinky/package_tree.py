@@ -397,7 +397,10 @@ class Package:
 			utils.logerr(None, "Logs: {}; {}".format(self.srcpkg.stdoutlogfile, self.srcpkg.stderrlogfile))
 			return False
 
-		pkgext = os.environ.get('PKGEXT') or '.pkg.tar.xz'
+		pkgext_makepkgconf = subprocess.getoutput("bash -c 'source {} && echo $PKGEXT'".format(self.ctx.makepkgconf))
+		pkgext_env = os.environ.get('PKGEXT')
+
+		pkgext = pkgext_env or pkgext_makepkgconf or '.pkg.tar.xz'
 		fullpkgnames = []
 		fullpkgname_x86_64_tmpl = "{}-{}-x86_64{}"
 		fullpkgname_any_tmpl = "{}-{}-any{}"

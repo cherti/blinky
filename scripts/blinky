@@ -25,13 +25,20 @@ parser.add_argument("--build-only", action='store_true', default=False, dest='bu
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
 parser.add_argument("--difftool", action='store', default=None, dest='difftool', help="specify tool used for diffing (must work via '<tool> file1 file2')")
+parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
 
 args = parser.parse_args()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'v'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'v'])
 
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
+
+verified_makepkgconf = '/etc/makepkg.conf'
+if os.path.isfile(args.makepkgconf) and os.access(args.makepkgconf, os.R_OK):
+	verified_makepkgconf = args.makepkgconf
+else:
+	utils.logerr(None, "{} not found, using /etc/makepkg.conf instead".format(args.makepkgconf))
 
 ctx = Config(
 		cachedir=os.path.join(args.aur_local, 'cache'),
@@ -41,6 +48,7 @@ ctx = Config(
 		force_review=args.force_review,
 		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
 		difftool=args.difftool,
+		makepkgconf=verified_makepkgconf,
 		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
