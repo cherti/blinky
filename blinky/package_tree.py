@@ -74,6 +74,8 @@ class SourcePkg:
 		self.built         = False
 		self.build_success = False
 		self.srcdir        = None
+		self.stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout.log".format(self.name, self.version))
+		self.stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr.log".format(self.name, self.version))
 		utils.logmsg(self.ctx.v, 3, "Instantiating source-pkg {}".format(self.name))
 
 
@@ -108,16 +110,12 @@ class SourcePkg:
 		os.chdir(self.srcdir)
 		self.built = True
 
-		# prepare logfiles
-		stdoutlogfile = os.path.join(self.ctx.logdir, "{}-{}.stdout.log".format(self.name, self.version))
-		stderrlogfile = os.path.join(self.ctx.logdir, "{}-{}.stderr.log".format(self.name, self.version))
-
-		with open(stdoutlogfile, 'w') as outlog, open(stderrlogfile, 'w') as errlog:
+		with open(self.stdoutlogfile, 'w') as outlog, open(self.stderrlogfile, 'w') as errlog:
 			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
 			r = p.wait()
 
 		if r != 0:
-			with open(stdoutlogfile, 'a') as outlog, open(stderrlogfile, 'a') as errlog:
+			with open(self.stdoutlogfile, 'a') as outlog, open(self.stderrlogfile, 'a') as errlog:
 				print("\nexit code: {}".format(r), file=outlog)
 				print("\nexit code: {}".format(r), file=errlog)
 			self.build_success = False
@@ -396,6 +394,7 @@ class Package:
 		succeeded = self.srcpkg.build(buildflags=buildflags)
 		if not succeeded:
 			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
+			utils.logerr(None, "Logs: {}; {}".format(self.srcpkg.stdoutlogfile, self.srcpkg.stderrlogfile))
 			return False
 
 		pkgext = os.environ.get('PKGEXT') or '.pkg.tar.xz'
