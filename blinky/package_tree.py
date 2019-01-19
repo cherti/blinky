@@ -216,7 +216,7 @@ class SourcePkg:
 
 		installfile = '{}.install'.format(self.name)
 		if os.path.exists(installfile):
-			positively_reviewed = review_file('PKGBUILD')
+			positively_reviewed = review_file(installfile)
 			if not positively_reviewed:
 				return self.set_review_state(False)
 
