@@ -214,11 +214,12 @@ class SourcePkg:
 		if not positively_reviewed:
 			return self.set_review_state(False)
 
-		installfile = '{}.install'.format(self.name)
-		if os.path.exists(installfile):
-			positively_reviewed = review_file(installfile)
-			if not positively_reviewed:
-				return self.set_review_state(False)
+		installfiles = [f for f in os.listdir() if f.endswith('.install')]
+		for installfile in installfiles:
+			if os.path.exists(installfile):
+				positively_reviewed = review_file(installfile)
+				if not positively_reviewed:
+					return self.set_review_state(False)
 
 		return self.set_review_state(True)
 
