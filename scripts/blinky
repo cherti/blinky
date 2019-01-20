@@ -145,16 +145,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(p.name for p in md_aur)))
 		build_packages_from_aur([p.name for p in md_aur], install_as_dep=True)
 
-	pacman.refresh()
-	skipped_due_to_makedep_not_installed = []
-	for p in packages:
-		if not p.check_makedeps_installed():
-			skipped_due_to_makedep_not_installed.append(p)
-			utils.logerr(None, "Skipping {}: not all required makedeps installed".format(p.name))
-
-	for p in skipped_due_to_makedep_not_installed:
-		packages.remove(p)
-
 	repodeps = set()
 	for p in packages:
 		repodeps = repodeps.union(p.get_repodeps())
@@ -167,6 +157,18 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install deps and makedeps from repos")
+
+
+	pacman.refresh()
+	skipped_due_to_makedep_not_installed = []
+	for p in packages:
+		if not p.check_makedeps_installed():
+			skipped_due_to_makedep_not_installed.append(p)
+			utils.logerr(None, "Skipping {}: not all required makedeps installed".format(p.name))
+
+	for p in skipped_due_to_makedep_not_installed:
+		packages.remove(p)
+
 
 	for p in packages:
 		success = p.build(buildflags=['-Cfd'], recursive=True)
