@@ -395,8 +395,8 @@ class Package:
 		succeeded = self.srcpkg.build(buildflags=buildflags)
 		if not succeeded:
 			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
-			utils.logerr(None, "├─stdout-log: {}".format(self.srcpkg.stdoutlogfile))
-			utils.logerr(None, "└─stderr-log: {}".format(self.srcpkg.stderrlogfile))
+			utils.logerr(None, "├─stdout-log: {}".format(self.srcpkg.stdoutlogfile), primary=False)
+			utils.logerr(None, "└─stderr-log: {}".format(self.srcpkg.stderrlogfile), primary=False)
 			return False
 
 		pkgext_makepkgconf = subprocess.getoutput("bash -c 'source {} && echo $PKGEXT'".format(self.ctx.makepkgconf))

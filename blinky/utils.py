@@ -19,18 +19,25 @@ class APIError(Exception):
 		self.type = type
 
 
-def logerr(code, msg):
-	print(termcolor.colored(" !> {}".format(msg), color='red'), file=sys.stderr)
+def logerr(code, msg, primary=True):
+	prefix = ' !>'
+	if not primary:
+		prefix = '   '
+
+	print(termcolor.colored("{} {}".format(prefix, msg), color='red'), file=sys.stderr)
 	if code:
 		print(termcolor.colored(" --> Fatal, exiting".format(msg), color='red', attrs=["bold"]), file=sys.stderr)
 		exit(code)
 
-def logmsg(verbosity_level, required_level, msg):
+def logmsg(verbosity_level, required_level, msg, primary=True):
+	prefix = ' ::'
+	if not primary:
+		prefix = '   '
 	if verbosity_level >= required_level:
 		if required_level == 0:
-			print(termcolor.colored(" :: {}".format(msg), attrs=["bold"]))
+			print(termcolor.colored("{} {}".format(prefix, msg), attrs=["bold"]))
 		else:
-			print(" :: {}".format(msg))
+			print("{} {}".format(prefix, msg))
 
 
 def exit_if_root():
