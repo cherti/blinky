@@ -129,3 +129,15 @@ def getchar(msg):
 		termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 	print()
 	return ch
+
+
+def default_blinky_dir():
+	from xdg import BaseDirectory
+	# load_data_paths (generator) is empty if no data dirs exist
+	# so we can fall back to checking ~/.blinky
+	for xdg_dir in BaseDirectory.load_data_paths('blinky'):
+		return xdg_dir
+	# if the user does not have an existing ~/.blinky dir, start using the XDG default
+	if os.path.isdir('~/.blinky'):  # backward compatibility
+		return '~/.blinky'
+	return BaseDirectory.save_data_path('blinky')
