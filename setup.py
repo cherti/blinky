@@ -10,6 +10,7 @@ setup(
     install_requires=[
         #'pyalpm'  # not on pypi
 		#'colordiff'  # not on pypi
+        'pyxdg',
         'requests',
         'termcolor'
     ],
