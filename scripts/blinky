@@ -99,13 +99,15 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			utils.logerr(None, "Cannot build {}: {}".format(pkgname, str(e)))
 			return None
 
-
 	with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
 		pkg_parsers = []
 		for p in aurpkgs:
 			pkg_parsers.append(e.submit(parse_packages_with_depcheck, p, ctx))
 
-		packages = [parser.result() for parser in pkg_parsers if parser.result()]
+		try:
+			packages = [pkg_parser.result() for pkg_parser in pkg_parsers if pkg_parser.result()]
+		except Exception as e:
+			utils.logerr(8, e.args[0].reason)
 
 
 	dedup_pkgs(ctx)

@@ -317,6 +317,8 @@ class Package:
 					self.makedeps = [p.result() for p in makedep_pkgs_parser]
 			except utils.UnsatisfiableDependencyError as e:
 				raise utils.UnsatisfiableDependencyError(str(e) + " for {}".format(self.name))
+			except Exception as e:
+				raise e
 
 
 			if "OptDepends" in self.pkgdata:
