@@ -359,11 +359,12 @@ class Package:
 		if missing_aur_makedeps:
 			word_suffix = 's' if len(missing_aur_makedeps) > 1 else ""
 			msg = "Makedep{} {} not installed for {}".format(word_suffix, ", ".join(missing_makedeps), self.name)
-			utils.logerr(None, msg)
+			utils.logerr(None, "{}, aborting this subtree".format(msg))
 			return False
 
 		for dep in self.deps + self.makedeps:  # same as above + checking for repo-makedeps
 			if not dep.review():
+				utils.logmsg(self.ctx.v, 3, "{} failed review: dependency failed review".format(self.name))
 				return False  # already one dep not passing review is killer, no need to process further
 
 		if self.in_repos:
