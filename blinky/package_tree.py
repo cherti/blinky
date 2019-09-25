@@ -259,6 +259,11 @@ class Package:
 			else:
 				self.in_repos = False
 
+		# we can be this straight and directly raise here as all explicitly specified packages
+		# in the ignorelist should have already been dropped here
+		if not self.installed and self.name in ctx.ignored_pkgs:
+			raise utils.UnsatisfiableDependencyError("Dependency unsatisfiable: ignored package: {}".format(self.name))
+
 		self.deps              = []
 		self.makedeps          = []
 		self.optdeps           = []

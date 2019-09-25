@@ -26,10 +26,11 @@ parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", he
 parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
 parser.add_argument("--difftool", action='store', default=None, dest='difftool', help="specify tool used for diffing (must work via '<tool> file1 file2')")
 parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
+parser.add_argument("-i", "--ignore", action='append', default=[], dest='ignored_pkgs', metavar='pkg_name', help="ignore package (can be specified multiple times)")
 
 args = parser.parse_args()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'v'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v'])
 
 # process arguments if necessary
 args.aur_local = os.path.abspath(os.path.expanduser(args.aur_local))
@@ -49,6 +50,7 @@ ctx = Config(
 		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
 		difftool=args.difftool,
 		makepkgconf=verified_makepkgconf,
+		ignored_pkgs=args.ignored_pkgs,
 		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
