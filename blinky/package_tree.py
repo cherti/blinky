@@ -289,9 +289,9 @@ class Package:
 
 				msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"
 				if e.type == 'ratelimit':
-					msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
-				elif e.type == 'unavailable':
 					msg = "Dependency unsatisfiable due to rate limit on AUR-API, try again tomorrow: {}"
+				elif e.type == 'unavailable':
+					msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
 
 				raise utils.UnsatisfiableDependencyError(msg.format(self.name))
 
@@ -325,7 +325,6 @@ class Package:
 			except Exception as e:
 				raise e
 
-
 			if "OptDepends" in self.pkgdata:
 				for pkg in self.pkgdata["OptDepends"]:
 					self.optdeps.append(pkg)
@@ -351,7 +350,19 @@ class Package:
 
 	def review(self):
 		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))
-		for dep in self.deps + self.makedeps:
+
+		# hard check if all aur makedeps are actually already installed
+		# because we have to review AUR-makedeps before, this must have happened before
+		# this get-review-install-iteration, so missing makedeps at this point are a
+		# reason to error out
+		missing_aur_makedeps = [md.name for md in self.makedeps if not md.installed and not md.in_repos]
+		if missing_aur_makedeps:
+			word_suffix = 's' if len(missing_aur_makedeps) > 1 else ""
+			msg = "Makedep{} {} not installed for {}".format(word_suffix, ", ".join(missing_makedeps), self.name)
+			utils.logerr(None, msg)
+			return False
+
+		for dep in self.deps + self.makedeps:  # same as above + checking for repo-makedeps
 			if not dep.review():
 				return False  # already one dep not passing review is killer, no need to process further
 
@@ -376,6 +387,7 @@ class Package:
 			return True
 
 		return self.srcpkg.review()
+
 
 	def build(self, buildflags=['-Cdf'], recursive=False):
 		if recursive:
