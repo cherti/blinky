@@ -224,7 +224,7 @@ def clean_cache(keep_installed=False):
 
 	def get_pkgname_with_meta(fname):
 		try:
-			*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
+			*pkgnameparts, pkgver, pkgrel, pkgarch = fname.split(".pkg.")[0].split("-")
 		except ValueError:
 			msg = "Non-package {} detected in {}. You might want to clean this up manually.".format(p, ctx.cachedir)
 			utils.logerr(None, msg)
@@ -240,7 +240,7 @@ def clean_cache(keep_installed=False):
 		pkgnames = {}
 		for p in pkgs:
 			try:
-				name, version = get_pkgname_with_(p)
+				name, version = get_pkgname_with_meta(p)
 				if name not in pkgnames:
 					pkgnames[name] = []
 				pkgnames[name].append(version)
@@ -251,11 +251,13 @@ def clean_cache(keep_installed=False):
 		for name, versions in pkgnames.items():
 			s = pacman.find_local_satisfier(name)
 			for v in versions:
-				pkgv, pkgrel = v.split('-')
-				installed_pkg_prefix = "{}-{}-{}-x86_64.pkg.".format(pkgname, s.version, pkgrel)
-				this_pkg_prefix          = "{}-{}-{}-x86_64.pkg.".format(pkgname, pkgv,      pkgrel)
+				if not s:
+					continue
 
-				if installed_pkg_prefix != this_pkg_prefix:
+				installed_pkg_prefix = "{}-{}-x86_64.pkg.".format(name, s.version)
+				this_pkg_prefix      = "{}-{}-x86_64.pkg.".format(name, v)
+
+				if installed_pkg_prefix == this_pkg_prefix:
 					installed_prefixes.append(this_pkg_prefix)
 
 		return installed_prefixes
@@ -266,14 +268,14 @@ def clean_cache(keep_installed=False):
 				return True
 		return False
 
-	if not keep_installed:
-		prefixes_to_keep = [] if not keep_installed else get_installed_prefixes(ctx.cachedir)
-		pkgs = os.chdir(ctx.cachedir)
-		for p in pkgs:
-			if isin(p, prefixes_to_keep):
-				continue
-			else:
-				os.remove(f)
+	prefixes_to_keep = [] if not keep_installed else get_installed_prefixes(ctx.cachedir)
+	os.chdir(ctx.cachedir)
+	pkgs = os.listdir(ctx.cachedir)
+	for p in pkgs:
+		if isin(p, prefixes_to_keep):
+			continue
+		else:
+			os.remove(p)
 
 
 def clean_builddir():
