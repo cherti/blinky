@@ -222,6 +222,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 def clean_cache(keep_installed=False):
 	pkgs = os.listdir(ctx.cachedir)
 	files_to_remove = []
+	pkgs_dealt_with = []
 	for p in pkgs:
 		try:
 			*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
@@ -231,6 +232,11 @@ def clean_cache(keep_installed=False):
 			continue
 
 		pkgname = "-".join(pkgnameparts)
+
+		if pkgname in pkgs_dealt_with:
+			continue
+		else:
+			pkgs_dealt_with.append(pkgname)
 
 		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
 
