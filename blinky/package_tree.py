@@ -351,17 +351,6 @@ class Package:
 	def review(self):
 		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))
 
-		# hard check if all aur makedeps are actually already installed
-		# because we have to review AUR-makedeps before, this must have happened before
-		# this get-review-install-iteration, so missing makedeps at this point are a
-		# reason to error out
-		missing_aur_makedeps = [md.name for md in self.makedeps if not md.installed and not md.in_repos]
-		if missing_aur_makedeps:
-			word_suffix = 's' if len(missing_aur_makedeps) > 1 else ""
-			msg = "Makedep{} {} not installed for {}".format(word_suffix, ", ".join(missing_makedeps), self.name)
-			utils.logerr(None, "{}, aborting this subtree".format(msg))
-			return False
-
 		for dep in self.deps + self.makedeps:  # same as above + checking for repo-makedeps
 			if not dep.review():
 				utils.logmsg(self.ctx.v, 3, "{} failed review: dependency failed review".format(self.name))
@@ -391,6 +380,12 @@ class Package:
 
 
 	def build(self, buildflags=['-Cdf'], recursive=False):
+
+		if not self.check_makedeps_installed():
+			msg = "Makedeps not installed for {}".format(self.name)
+			utils.logerr(None, "{}, aborting this subtree".format(msg))
+			return False
+
 		if recursive:
 			for d in self.deps:
 				succeeded = d.build(buildflags=buildflags, recursive=True)
@@ -459,6 +454,15 @@ class Package:
 					rdeps.union(d.get_repodeps())
 			return rdeps
 
+	def get_deps(self):
+		if self.in_repos:
+			return set()  # pacman will take care of repodep-tree
+		else:
+			deps = set(self.deps)
+			for d in self.deps:
+				deps.union(d.get_deps())
+			return deps
+
 	def get_makedeps(self):
 		if self.in_repos:
 			return set()
@@ -505,7 +509,6 @@ class Package:
 		if recursive:
 			for d in self.deps + self.makedeps:
 				d.remove_sources()
-
 
 
 	def __str__(self):

@@ -76,6 +76,17 @@ def cleanup_procedure(pkgs, pkgs_skipped, keep_sources):
 			p.remove_sources()
 
 
+unneeded_makedeps = set()
+
+def cleanup_makedeps():
+	global unneeded_makedeps
+	if unneeded_makedeps and not args.keep_builddeps:
+		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
+		pacman.refresh()
+		if not pacman.remove_packages([p.name for p in unneeded_makedeps if pacman.find_local_satisfier(p.name)]):
+			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+
+
 def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs, aurdata = utils.check_in_aur(package_candidates)
 
@@ -85,7 +96,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 1, "Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
 
 	packages = []
-	skipped_packages = []
+	skipped_packages = set()
 	if len(aurpkgs) == 0:
 		utils.logmsg(ctx.v, 0, "No package candidates found in AUR, nothing to do.")
 		exit(0)
@@ -120,42 +131,61 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	for p in packages:
 		if not p.review():
 			utils.logmsg(ctx.v, 0, "Skipping: {}: Did not pass review".format(p.name))
-			skipped_packages.append(p)
+			skipped_packages.add(p)
 
 	# drop all packages that did not pass review
 	for p in skipped_packages:
 		packages.remove(p)
 
+	skipped_packages = set()
+
+	# check for dependencies and drop everything whose dependencies cannot be met upfront
+	skipped_due_to_missing_deps = set()
+
+	# first we do makedeps
+	# then we do deps, as deps can implicitly also be makedeps and therefore have to be built/installed beforehand
 	uninstalled_makedeps = set()
-	skipped_due_to_missing_makedeps = []
-	for p in packages:
-		md = p.get_makedeps()
-		md_not_found = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
+	uninstalled_deps     = set()
+	for pkg in packages:
+		md = pkg.get_makedeps()
+		md_not_found         = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
+		uninstalled_makedeps = uninstalled_makedeps.union(set([p for p in md if not p.installed and (p.in_repos or p.in_aur is not None)]))
 		if len(md_not_found) > 0:
-			utils.logerr(None, "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping".format(p.name))
-			skipped_packages.append(p)
-			skipped_due_to_missing_makedeps.append(p)
+			msg = "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping"
+			utils.logerr(None, msg.format(pkg.name))
+			skipped_packages.add(pkg)
+			skipped_due_to_missing_deps.add(pkg)
 
-		md_available = set([p for p in md if not p.installed and (p.in_repos or p.in_aur)])
-
-		uninstalled_makedeps = uninstalled_makedeps.union(md_available)
+	uninstalled_deps = set()
+	for pkg in packages:
+		d = pkg.get_deps()
+		d_not_found      = [p for p in d if not p.installed and not p.in_repos and not p.in_aur]
+		uninstalled_deps = uninstalled_deps.union(set([p for p in d if not p.installed and (p.in_repos or p.in_aur)]))
+		if len(d_not_found) > 0:
+			msg = "{}: cannot satisfy deps from either repos, AUR or local installed packages, skipping"
+			utils.logerr(None, msg.format(pkg.name))
+			skipped_packages.add(pkg)
+			skipped_due_to_missing_deps.add(pkg)
 
 	# drop all packages whose makedeps cannot be satisfied
-	for p in skipped_due_to_missing_makedeps:
+	for p in skipped_due_to_missing_deps:
 		packages.remove(p)
 
-	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
-	if len(md_aur) > 0:
-		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(p.name for p in md_aur)))
-		build_packages_from_aur([p.name for p in md_aur], install_as_dep=True)
+	deps_aur     = set([p for p in uninstalled_deps if p.in_aur])
+	makedeps_aur = set([p for p in uninstalled_makedeps if p.in_aur])
+	deps_aur_total = deps_aur.union(makedeps_aur)
+	if len(deps_aur_total) > 0:
+		pacman.refresh()
+		utils.logmsg(ctx.v, 0, "Building deps from aur: {}".format(", ".join(p.name for p in deps_aur_total)))
+		build_packages_from_aur([p.name for p in deps_aur_total], install_as_dep=True)
 
 	repodeps = set()
 	for p in packages:
 		repodeps = repodeps.union(p.get_repodeps())
 
-	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
-	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
-	to_be_installed = set(repodeps_uninstalled).union(md_repos)
+	md_repos = set([p.name for p in uninstalled_makedeps if p.in_repos])
+	repodeps_uninstalled = set([p.name for p in repodeps if not p.installed])
+	to_be_installed = repodeps_uninstalled.union(md_repos)
 
 	if to_be_installed:
 		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
@@ -210,11 +240,9 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		else:
 			utils.logmsg(ctx.v, 0, "No packages built, nothing to install")
 
-	if uninstalled_makedeps and not args.keep_builddeps:
-		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
-		pacman.refresh()
-		if not pacman.remove_packages([p.name for p in uninstalled_makedeps if pacman.find_local_satisfier(p.name)]):
-			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+	if uninstalled_makedeps:
+		global unneeded_makedeps
+		unneeded_makedeps = unneeded_makedeps.union(uninstalled_makedeps)
 
 	cleanup_procedure(packages, skipped_packages, args.keep_sources)
 
@@ -295,6 +323,8 @@ if __name__ == "__main__":
 		if args.install or args.rebuildpkg or args.rebuildtree:
 			utils.exit_if_root()
 			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
+			cleanup_makedeps()
+
 		if args.search:
 			from termcolor import colored
 			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates)
@@ -353,6 +383,7 @@ if __name__ == "__main__":
 						upgradable_pkgs.append(pkgdata["Name"])
 
 			build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
+			cleanup_makedeps()
 
 		if args.clean:
 			clean_cache(keep_installed=True)
