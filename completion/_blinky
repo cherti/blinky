@@ -71,8 +71,16 @@ _blinky_zsh_comp() {
     '-Scc[Clean cache of all package files, including installed]'
   )
 
+  # remove longest trailing "[*" from every element and pack () around
   _exclude_rules='('"${_blinky_actions[@]%%\[*}"')'
 
+  # prefix every element from _blinky_actions with _exclude_rules this results in something like
+  #
+  # '(-S -Sr -Srr)-S[Install package(s) from AUR]'
+  # '(-S -Sr -Srr)-Sr[Reinstall package(s) from AUR (including rebuild)]'
+  # '(-S -Sr -Srr)-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
+  #
+  # this is the syntax for _arguments to say "do not suggest any of ( <these> ) once <THAT> is present and explain it as [ <text> ]
   _full_actions=($_exclude_rules${^_blinky_actions})
 
   local -a cmd;
@@ -128,6 +136,7 @@ _blinky_zsh_comp() {
         '*:package:_blinky_completions_all_packages'
       ;;
     *)
+      # else, (i.e. no -S command on the current command line
       _arguments : \
         $_full_actions[@] \
         $_blinky_opts_all[@]
