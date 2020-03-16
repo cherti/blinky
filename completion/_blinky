@@ -6,39 +6,27 @@
 
 # heavily inspired by the _pacman completion
 
-# options for passing to _arguments: main pacman commands
-_blinky_opts_commands=(
-	'(-h --help)'{-h,--help}'[Display usage]'
+_blinky_opts_all=(
+  '(-v --verbose)'{-v,--verbose}'[Be more verbose]'
 )
 
-_blinky_opts_common=(
-	'(-v --verbose)'{-v,--verbose}'[Be more verbose]'
-	'--local-path[Local path for building and cache]:cache_location:_files -/'
+_blinky_opts_cache=(
+  '--local-path[Local path for building and cache]:cache_location:_files -/'
 )
 
-_blinky_keep_opts() {
-  local -a keepopts
-  keepopts=('none:keep no sources' 'skipped:keep sources of skipped packages' 'all:keep all sources')
-  _describe 'keep source setting' keepopts
-}
+_blinky_opts_install=(
+  '--asdeps[If packages are installed, install them as dependencies]'
+)
 
 _blinky_opts_build=(
+  '--difftool=[specify tool used for diffing]:difftool: _command_names -e'
+  '--makepkg.conf[Configuration file for makepkg]:makpkg.conf: _files'
+  '*--ignore[ignore package]:package: _blinky_completions_all_packages'
   '--asdeps[If packages are installed, install them as dependencies]'
   '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
-  '--keep-sources[Keep sources]:keep which sources:_blinky_keep_opts'
+  "--keep-sources[Keep sources]:keep which sources:((none\:'keep no sources' skipped\:'keep sources of skipped packages' all\:'keep all sources'))"
+  '--keep-builddeps[Do not uninstall previously uninstalled makedeps after building]'
   '--build-only[Only build, do not install anything]'
-)
-
-# options for passing to _arguments: options for --sync command
-_blinky_opts_sync_actions=(
-  '-S[Install package(s) from AUR]'
-  '-Sr[Reinstall package(s) from AUR (including rebuild)]'
-  '-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
-  '-Ss[Search for package(s) in AUR]'
-  '-Si[Get detailed info on packages in AUR]'
-  '-Syu[Upgrade all out-of-date AUR-packages]'
-  '-Sc[Clean cache of all uninstalled package files]'
-  '-Scc[Clean cache of all package files, including installed]'
 )
 
 # provides completions for packages available from repositories
@@ -46,7 +34,9 @@ _blinky_opts_sync_actions=(
 _blinky_completions_local_packages() {
   local -a seq sep cmd packages repositories packages_long
 
-  packages=( $(pacman -Qm | \sed "s/ .*//") )
+  #    ${(f)"$(pacman -Qm)"} split the response from `pacman -Qm` by line break
+  #  ${.....................[@]%%\ *} strip away the largest match of trailing " *"
+  packages=( ${${(f)"$(pacman -Qm)"}[@]%%\ *} )
 
   typeset -U packages
   _wanted packages expl "installed non-repository packages" compadd "${(@)packages}"
@@ -58,87 +48,90 @@ _blinky_completions_all_packages() {
   # set with:
   # zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
   zstyle -s :completion:expand-word:complete:blinky:pkgcomp: numbers minimum_package_name_length || minimum_package_name_length=4
-  if [[ $#words[$CURRENT] -lt $minimum_package_name_length || $words[$CURRENT] = -* ]]; then
+  if [[ $#PREFIX -lt $minimum_package_name_length || $PREFIX = -* ]]; then
     return 0
   fi
-  matches=( $(blinky -complete $words[$CURRENT]) )
+  matches=( $(blinky -complete $PREFIX) )
   typeset -U packages
   _wanted packages expl "packages" compadd "${(@)matches}"
 }
 
-
-# handles --sync subcommand
-_blinky_action_sync() {
-  local context state line
-  typeset -A opt_args
-
-  _arguments : \
-    "$_blinky_opts_common[@]" \
-    "$_blinky_opts_sync_actions[@]" \
-    '*:package:_blinky_completions_all_packages'
-}
-
-_blinky_action_rebuild() {
-  local context state line
-  typeset -A opt_args
-
-  _arguments : \
-    "$_blinky_opts_common[@]" \
-    "$_blinky_opts_build[@]" \
-    '*:package:_blinky_completions_local_packages'
-}
-
 # main dispatcher
 _blinky_zsh_comp() {
-  local -a args cmds;
+  # commands (all mutually exclusive)
+  _blinky_actions=(
+    {-h,--help}'[Display usage]'
+    '-S[Install package(s) from AUR]'
+    '-Sr[Reinstall package(s) from AUR (including rebuild)]'
+    '-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
+    '-Ss[Search for package(s) in AUR]'
+    '-Si[Get detailed info on packages in AUR]'
+    '-Syu[Upgrade all out-of-date AUR-packages]'
+    '-Sc[Clean cache of all uninstalled package files]'
+    '-Scc[Clean cache of all package files, including installed]'
+  )
+
+  _exclude_rules='('"${_blinky_actions[@]%%\[*}"')'
+
+  _full_actions=($_exclude_rules${^_blinky_actions})
+
+  local -a cmd;
   local tmp
-  #     ${(M)words:#-*} : array of all the elements of words, that match -*
-  #   ${...............#-} remove leading -
-  # ${....................:#-*} : array of all the elements that don't match -*
+  #     ${(M)words:#-S*} : array of all the elements of words, that match -S*
+  #   ${................#-} remove leading -
+  # ${.....................:#-*} : array of all the elements that don't match -*
   # i.e. args is all that starts with a single - and that single - removed
 
-  args=( ${${${(M)words:#-*}#-}:#-*} )
-  for tmp in $words; do
-    cmds+=("${${_blinky_opts_commands[(r)*$tmp\[*]%%\[*}#*\)}")
-  done
-  local s_is_at=${words[(i)-$args[1]]}
-  case $args in
+  cmd=( ${${${(M)words:#-S*}#-}:#-*} )
+  case $cmd[1] in
     Sc*)
-      [[ $CURRENT -eq $s_is_at ]] && _blinky_action_sync || _arguments : \
-        "$_blinky_opts_common[@]"
+      _arguments : \
+        $_full_actions[@] \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_cache[@]
       ;;
     Ss)
-      # TODO buggy
       _arguments : \
-        "$_blinky_opts_common[@]" \
-        "$_blinky_opts_sync_modifiers[@]" \
-        '*:search text: _message "foo"'
+        $_full_actions[@] \
+        $_blinky_opts_all[@] \
+        '*:search text'
       ;;
     Sr*)
-      [[ $CURRENT -eq $s_is_at ]] && _blinky_action_sync || _blinky_action_rebuild
+      _arguments : \
+        $_full_actions[@] \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_blinky_opts_cache[@] \
+        '*:package:_blinky_completions_local_packages'
       ;;
     Si)
-      _blinky_completions_all_packages
+      _arguments : \
+        $_full_actions[@] \
+        $_blinky_opts_all[@] \
+        '*:package:_blinky_completions_all_packages'
       ;;
     Syu)
       _arguments : \
-        "$_blinky_opts_common[@]"
+        $_full_actions[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_cache[@] \
+        $_blinky_opts_all[@]
       ;;
     S*)
-      _blinky_action_sync
+      _arguments : \
+        $_full_actions[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_blinky_opts_cache[@] \
+        $_blinky_opts_all[@] \
+        '*:package:_blinky_completions_all_packages'
       ;;
     *)
-      case ${(M)words:#--*} in
-        *--help*)
-          return 0;
-        ;;
-        *)
-          _arguments : \
-            "$_blinky_opts_commands[@]" \
-            "$_blinky_opts_sync_actions[@]"
-        ;;
-      esac
-    ;;
+      _arguments : \
+        $_full_actions[@] \
+        $_blinky_opts_all[@]
+      ;;
   esac
 }
 
