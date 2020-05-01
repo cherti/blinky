@@ -131,7 +131,7 @@ def getchar(msg):
 	return ch
 
 
-def default_blinky_dir():
+def default_data_dir():
 	from xdg import BaseDirectory
 	# load_data_paths (generator) is empty if no data dirs exist
 	# so we can fall back to checking ~/.blinky
