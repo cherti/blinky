@@ -131,13 +131,21 @@ def getchar(msg):
 	return ch
 
 
-def default_data_dir():
+def get_data_dir():
 	from xdg import BaseDirectory
-	# load_data_paths (generator) is empty if no data dirs exist
-	# so we can fall back to checking ~/.blinky
-	for xdg_dir in BaseDirectory.load_data_paths('blinky'):
-		return xdg_dir
-	# if the user does not have an existing ~/.blinky dir, start using the XDG default
+
 	if os.path.isdir('~/.blinky'):  # backward compatibility
-		return '~/.blinky'
+		print(" DEPRECATION WARNING: support for ~/.blinky will be removed in future versions, call migrate-blinky-dirs.py to migrate and silence this message")
+		return '~/.blinky/cache'
+
 	return BaseDirectory.save_data_path('blinky')
+
+
+def get_cache_dir():
+	from xdg import BaseDirectory
+
+	if os.path.isdir(os.path.abspath('~/.blinky')):  # backward compatibility
+		print(" DEPRECATION WARNING: support for ~/.blinky will be removed in future versions, call migrate-blinky-dirs.py to migrate and silence this message")
+		return '~/.blinky/cache'
+
+	return BaseDirectory.save_cache_path('blinky')
