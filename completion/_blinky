@@ -6,14 +6,10 @@
 
 # heavily inspired by the _pacman completion
 
-local -a _blinky_opts_all _blinky_opts_cache _blinky_opts_install _blinky_opts_build 
+local -a _blinky_opts_all _blinky_opts_install _blinky_opts_build
 
 _blinky_opts_all=(
   '(-v --verbose)'{-v,--verbose}'[Be more verbose]'
-)
-
-_blinky_opts_cache=(
-  '--local-path[Local path for building and cache]:cache_location:_files -/'
 )
 
 _blinky_opts_install=(
@@ -99,8 +95,7 @@ _blinky_zsh_comp() {
     Sc*)
       _arguments : \
         $_full_actions[@] \
-        $_blinky_opts_all[@] \
-        $_blinky_opts_cache[@]
+        $_blinky_opts_all[@]
       ;;
     Ss)
       _arguments : \
@@ -114,7 +109,6 @@ _blinky_zsh_comp() {
         $_blinky_opts_all[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
-        $_blinky_opts_cache[@] \
         '*:package:_blinky_completions_local_packages'
       ;;
     Si)
@@ -127,7 +121,6 @@ _blinky_zsh_comp() {
       _arguments : \
         $_full_actions[@] \
         $_blinky_opts_build[@] \
-        $_blinky_opts_cache[@] \
         $_blinky_opts_all[@]
       ;;
     S*)
@@ -135,7 +128,6 @@ _blinky_zsh_comp() {
         $_full_actions[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
-        $_blinky_opts_cache[@] \
         $_blinky_opts_all[@] \
         '*:package:_blinky_completions_all_packages'
       ;;
@@ -146,7 +138,6 @@ _blinky_zsh_comp() {
         $_full_actions[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
-        $_blinky_opts_cache[@] \
         $_blinky_opts_all[@]
       ;;
   esac
