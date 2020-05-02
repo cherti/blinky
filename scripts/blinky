@@ -19,7 +19,7 @@ primary.add_argument("-Scc", action='store_true', default=False, dest='fullclean
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--force-review", action='store_true', default=False, dest='force_review', help="Force review even if exact copies of the files have already been reviewed positively")
 parser.add_argument("--keep-builddeps", action='store_true', default=False, dest='keep_builddeps', help="Do not uninstall previously uninstalled makedeps after building")
-parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', help="Keep sources, can be 'none' (default), 'skipped', for keeping skipped packages only, or 'all'")
+parser.add_argument("--keep-sources", action='store', default='none', dest='keep_sources', metavar='<value>', help="Keep sources, can be 'none' (default), 'skipped', for keeping skipped packages only, or 'all'")
 parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
