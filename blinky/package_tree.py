@@ -130,7 +130,7 @@ class SourcePkg:
 		self.reviewed = True
 		return self.review_passed
 
-	def review(self):
+	def review(self, via=None):
 		if self.reviewed:
 			return self.review_passed
 
@@ -153,7 +153,7 @@ class SourcePkg:
 
 			return h.hexdigest()
 
-		def review_file(fname):
+		def review_file(fname, via=None):
 			ref_file = os.path.join(self.ctx.revieweddir, self.name, fname)
 			# compare both reference PKGBUILD (if existent) and new PKGBUILD
 
@@ -206,18 +206,38 @@ class SourcePkg:
 						else:
 							utils.logmsg(0, 0, "No reference available, cannot provide diff")
 
-					msg_prefix = "{} of package {}: ".format(fname, self.name)
-					user_verdict = utils.getchar(msg_prefix + "(P)ass review, (F)ail review, (E)dit, (D)iff, (S)kip?: [p/f/e/d/s] ").lower()
+					if via:
+						# if we get a source pkg calling the review we can deduct
+						# a dependency chain leading to this srcpkg
+						origin = ""
+						if via.name != self.name:
+							# if the SourcePkg and the Package are named identically, hide the SourcePkg-distinction
+							origin += "via " + via.name
+
+						while via.parents:
+							origin += " → " + via.parents[0].name
+							if len(via.parents) > 1:
+								origin += " (among others)"
+							via = via.parents[0]
+
+						if origin == "":
+							print("{} of package {}:".format(fname, self.name))
+						else:
+							print("{} of package {} ({}):".format(fname, self.name, origin))
+					else:
+						print("{} of package {}:".format(fname, self.name))
+
+					user_verdict = utils.getchar("(P)ass review, (F)ail review, (E)dit, (D)iff, (S)kip?: [p/f/e/d/s] ").lower()
 
 
-		positively_reviewed = review_file('PKGBUILD')
+		positively_reviewed = review_file('PKGBUILD', via=via)
 		if not positively_reviewed:
 			return self.set_review_state(False)
 
 		installfiles = [f for f in os.listdir() if f.endswith('.install')]
 		for installfile in installfiles:
 			if os.path.exists(installfile):
-				positively_reviewed = review_file(installfile)
+				positively_reviewed = review_file(installfile, via=via)
 				if not positively_reviewed:
 					return self.set_review_state(False)
 
@@ -259,6 +279,11 @@ class Package:
 			else:
 				self.in_repos = False
 
+		# we can be this straight and directly raise here as all explicitly specified packages
+		# in the ignorelist should have already been dropped here
+		if not self.installed and self.name in ctx.ignored_pkgs:
+			raise utils.UnsatisfiableDependencyError("Dependency unsatisfiable: ignored package: {}".format(self.name))
+
 		self.deps              = []
 		self.makedeps          = []
 		self.optdeps           = []
@@ -284,9 +309,9 @@ class Package:
 
 				msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"
 				if e.type == 'ratelimit':
-					msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
-				elif e.type == 'unavailable':
 					msg = "Dependency unsatisfiable due to rate limit on AUR-API, try again tomorrow: {}"
+				elif e.type == 'unavailable':
+					msg = "Dependency unsatisfiable due to unavailability of AUR-API, try again later: {}"
 
 				raise utils.UnsatisfiableDependencyError(msg.format(self.name))
 
@@ -317,7 +342,8 @@ class Package:
 					self.makedeps = [p.result() for p in makedep_pkgs_parser]
 			except utils.UnsatisfiableDependencyError as e:
 				raise utils.UnsatisfiableDependencyError(str(e) + " for {}".format(self.name))
-
+			except Exception as e:
+				raise e
 
 			if "OptDepends" in self.pkgdata:
 				for pkg in self.pkgdata["OptDepends"]:
@@ -344,8 +370,10 @@ class Package:
 
 	def review(self):
 		utils.logmsg(self.ctx.v, 3, "reviewing {}".format(self.name))
-		for dep in self.deps + self.makedeps:
+
+		for dep in self.deps + self.makedeps:  # same as above + checking for repo-makedeps
 			if not dep.review():
+				utils.logmsg(self.ctx.v, 3, "{} failed review: dependency failed review".format(self.name))
 				return False  # already one dep not passing review is killer, no need to process further
 
 		if self.in_repos:
@@ -368,9 +396,16 @@ class Package:
 			utils.logmsg(self.ctx.v, 3, "{} passed review: in cache".format(self.name))
 			return True
 
-		return self.srcpkg.review()
+		return self.srcpkg.review(via=self)
+
 
 	def build(self, buildflags=['-Cdf'], recursive=False):
+
+		if not self.check_makedeps_installed():
+			msg = "Makedeps not installed for {}".format(self.name)
+			utils.logerr(None, "{}, aborting this subtree".format(msg))
+			return False
+
 		if recursive:
 			for d in self.deps:
 				succeeded = d.build(buildflags=buildflags, recursive=True)
@@ -439,6 +474,15 @@ class Package:
 					rdeps.union(d.get_repodeps())
 			return rdeps
 
+	def get_deps(self):
+		if self.in_repos:
+			return set()  # pacman will take care of repodep-tree
+		else:
+			deps = set(self.deps)
+			for d in self.deps:
+				deps.union(d.get_deps())
+			return deps
+
 	def get_makedeps(self):
 		if self.in_repos:
 			return set()
@@ -485,7 +529,6 @@ class Package:
 		if recursive:
 			for d in self.deps + self.makedeps:
 				d.remove_sources()
-
 
 
 	def __str__(self):

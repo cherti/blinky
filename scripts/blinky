@@ -23,12 +23,13 @@ parser.add_argument("--keep-sources", action='store', default='none', dest='keep
 parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
-parser.add_argument("--difftool", action='store', default=None, dest='difftool', help="specify tool used for diffing (must work via '<tool> file1 file2')")
-parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
+parser.add_argument("--difftool", action='store', default=None, dest='difftool', metavar='<difftool>', help="specify tool used for diffing (must work via '<tool> file1 file2')")
+parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', metavar='makepkg-configfile', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
+parser.add_argument("--ignore", action='append', default=[], dest='ignored_pkgs', metavar='<pkg>', help="ignore package (can be specified multiple times)")
 
 args = parser.parse_args()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'v'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v'])
 
 verified_makepkgconf = '/etc/makepkg.conf'
 if os.path.isfile(args.makepkgconf) and os.access(args.makepkgconf, os.R_OK):
@@ -45,6 +46,7 @@ ctx = Config(
 		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
 		difftool=args.difftool,
 		makepkgconf=verified_makepkgconf,
+		ignored_pkgs=args.ignored_pkgs,
 		v=args.verbosity
 		)
 os.makedirs(ctx.cachedir, exist_ok=True)
@@ -70,6 +72,17 @@ def cleanup_procedure(pkgs, pkgs_skipped, keep_sources):
 			p.remove_sources()
 
 
+unneeded_makedeps = set()
+
+def cleanup_makedeps():
+	global unneeded_makedeps
+	if unneeded_makedeps and not args.keep_builddeps:
+		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
+		pacman.refresh()
+		if not pacman.remove_packages([p.name for p in unneeded_makedeps if pacman.find_local_satisfier(p.name)]):
+			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+
+
 def build_packages_from_aur(package_candidates, install_as_dep=False):
 	aurpkgs, repopkgs, notfoundpkgs, aurdata = utils.check_in_aur(package_candidates)
 
@@ -79,7 +92,7 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 1, "Skipping: {}: neither in repos nor AUR".format(", ".join(notfoundpkgs)))
 
 	packages = []
-	skipped_packages = []
+	skipped_packages = set()
 	if len(aurpkgs) == 0:
 		utils.logmsg(ctx.v, 0, "No package candidates found in AUR, nothing to do.")
 		exit(0)
@@ -95,13 +108,15 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			utils.logerr(None, "Cannot build {}: {}".format(pkgname, str(e)))
 			return None
 
-
 	with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
 		pkg_parsers = []
 		for p in aurpkgs:
 			pkg_parsers.append(e.submit(parse_packages_with_depcheck, p, ctx))
 
-		packages = [parser.result() for parser in pkg_parsers if parser.result()]
+		try:
+			packages = [pkg_parser.result() for pkg_parser in pkg_parsers if pkg_parser.result()]
+		except Exception as e:
+			utils.logerr(8, e.args[0].reason)
 
 
 	dedup_pkgs(ctx)
@@ -112,42 +127,61 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	for p in packages:
 		if not p.review():
 			utils.logmsg(ctx.v, 0, "Skipping: {}: Did not pass review".format(p.name))
-			skipped_packages.append(p)
+			skipped_packages.add(p)
 
 	# drop all packages that did not pass review
 	for p in skipped_packages:
 		packages.remove(p)
 
+	skipped_packages = set()
+
+	# check for dependencies and drop everything whose dependencies cannot be met upfront
+	skipped_due_to_missing_deps = set()
+
+	# first we do makedeps
+	# then we do deps, as deps can implicitly also be makedeps and therefore have to be built/installed beforehand
 	uninstalled_makedeps = set()
-	skipped_due_to_missing_makedeps = []
-	for p in packages:
-		md = p.get_makedeps()
-		md_not_found = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
+	uninstalled_deps     = set()
+	for pkg in packages:
+		md = pkg.get_makedeps()
+		md_not_found         = [p for p in md if not p.installed and not p.in_repos and not p.in_aur]
+		uninstalled_makedeps = uninstalled_makedeps.union(set([p for p in md if not p.installed and (p.in_repos or p.in_aur is not None)]))
 		if len(md_not_found) > 0:
-			utils.logerr(None, "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping".format(p.name))
-			skipped_packages.append(p)
-			skipped_due_to_missing_makedeps.append(p)
+			msg = "{}: cannot satisfy makedeps from either repos, AUR or local installed packages, skipping"
+			utils.logerr(None, msg.format(pkg.name))
+			skipped_packages.add(pkg)
+			skipped_due_to_missing_deps.add(pkg)
 
-		md_available = set([p for p in md if not p.installed and (p.in_repos or p.in_aur)])
-
-		uninstalled_makedeps = uninstalled_makedeps.union(md_available)
+	uninstalled_deps = set()
+	for pkg in packages:
+		d = pkg.get_deps()
+		d_not_found      = [p for p in d if not p.installed and not p.in_repos and not p.in_aur]
+		uninstalled_deps = uninstalled_deps.union(set([p for p in d if not p.installed and (p.in_repos or p.in_aur)]))
+		if len(d_not_found) > 0:
+			msg = "{}: cannot satisfy deps from either repos, AUR or local installed packages, skipping"
+			utils.logerr(None, msg.format(pkg.name))
+			skipped_packages.add(pkg)
+			skipped_due_to_missing_deps.add(pkg)
 
 	# drop all packages whose makedeps cannot be satisfied
-	for p in skipped_due_to_missing_makedeps:
+	for p in skipped_due_to_missing_deps:
 		packages.remove(p)
 
-	md_aur = [p for p in uninstalled_makedeps if p.in_aur]
-	if len(md_aur) > 0:
-		utils.logmsg(ctx.v, 0, "Building makedeps from aur: {}".format(", ".join(p.name for p in md_aur)))
-		build_packages_from_aur([p.name for p in md_aur], install_as_dep=True)
+	deps_aur     = set([p for p in uninstalled_deps if p.in_aur])
+	makedeps_aur = set([p for p in uninstalled_makedeps if p.in_aur])
+	deps_aur_total = deps_aur.union(makedeps_aur)
+	if len(deps_aur_total) > 0:
+		pacman.refresh()
+		utils.logmsg(ctx.v, 0, "Building deps from aur: {}".format(", ".join(p.name for p in deps_aur_total)))
+		build_packages_from_aur([p.name for p in deps_aur_total], install_as_dep=True)
 
 	repodeps = set()
 	for p in packages:
 		repodeps = repodeps.union(p.get_repodeps())
 
-	md_repos = [p.name for p in uninstalled_makedeps if p.in_repos]
-	repodeps_uninstalled = [p.name for p in repodeps if not p.installed]
-	to_be_installed = set(repodeps_uninstalled).union(md_repos)
+	md_repos = set([p.name for p in uninstalled_makedeps if p.in_repos])
+	repodeps_uninstalled = set([p.name for p in repodeps if not p.installed])
+	to_be_installed = repodeps_uninstalled.union(md_repos)
 
 	if to_be_installed:
 		utils.logmsg(ctx.v, 0, "Installing dependencies and makedeps from repos")
@@ -202,42 +236,70 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		else:
 			utils.logmsg(ctx.v, 0, "No packages built, nothing to install")
 
-	if uninstalled_makedeps and not args.keep_builddeps:
-		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
-		pacman.refresh()
-		if not pacman.remove_packages([p.name for p in uninstalled_makedeps if pacman.find_local_satisfier(p.name)]):
-			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
+	if uninstalled_makedeps:
+		global unneeded_makedeps
+		unneeded_makedeps = unneeded_makedeps.union(uninstalled_makedeps)
 
 	cleanup_procedure(packages, skipped_packages, args.keep_sources)
 
 
+
 def clean_cache(keep_installed=False):
-	pkgs = os.listdir(ctx.cachedir)
-	files_to_remove = []
-	for p in pkgs:
+
+	def get_pkgname_with_meta(fname):
 		try:
-			*pkgnameparts, pkgver, pkgrel, pkgarch = p.split(".pkg.")[0].split("-")
+			*pkgnameparts, pkgver, pkgrel, pkgarch = fname.split(".pkg.")[0].split("-")
 		except ValueError:
 			msg = "Non-package {} detected in {}. You might want to clean this up manually.".format(p, ctx.cachedir)
 			utils.logerr(None, msg)
-			continue
+			raise
 
-		pkgname = "-".join(pkgnameparts)
+		name = "-".join(pkgnameparts)
+		version = "{}-{}".format(pkgver, pkgrel)
+		return name, version
 
-		pkgfiles = [pkg for pkg in pkgs if pkg.startswith(pkgname)]
+	def get_installed_prefixes(cachedir):
+		installed_prefixes = []
+		pkgs = os.listdir(cachedir)
+		pkgnames = {}
+		for p in pkgs:
+			try:
+				name, version = get_pkgname_with_meta(p)
+				if name not in pkgnames:
+					pkgnames[name] = []
+				pkgnames[name].append(version)
+			except ValueError:
+				continue
 
-		s = pacman.find_local_satisfier(pkgname)
-		if s and keep_installed:
-			installed_package_prefix = "{}-{}-{}-{}.pkg.".format(pkgname, s.version, pkgrel, pkgarch)
-			for f in files_to_remove:
-				if f.startswith(installed_package_prefix):
-					files_to_remove.remove(f)
-		else:
-			files_to_remove += pkgfiles
 
+		for name, versions in pkgnames.items():
+			s = pacman.find_local_satisfier(name)
+			for v in versions:
+				if not s:
+					continue
+
+				installed_pkg_prefix = "{}-{}-x86_64.pkg.".format(name, s.version)
+				this_pkg_prefix      = "{}-{}-x86_64.pkg.".format(name, v)
+
+				if installed_pkg_prefix == this_pkg_prefix:
+					installed_prefixes.append(this_pkg_prefix)
+
+		return installed_prefixes
+
+	def isin(single, listing):
+		for l in listing:
+			if single.startswith(l):
+				return True
+		return False
+
+	prefixes_to_keep = [] if not keep_installed else get_installed_prefixes(ctx.cachedir)
 	os.chdir(ctx.cachedir)
-	for f in files_to_remove:
-		os.remove(f)
+	pkgs = os.listdir(ctx.cachedir)
+	for p in pkgs:
+		if isin(p, prefixes_to_keep):
+			continue
+		else:
+			os.remove(p)
 
 
 def clean_builddir():
@@ -257,6 +319,8 @@ if __name__ == "__main__":
 		if args.install or args.rebuildpkg or args.rebuildtree:
 			utils.exit_if_root()
 			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
+			cleanup_makedeps()
+
 		if args.search:
 			from termcolor import colored
 			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates)
@@ -315,6 +379,7 @@ if __name__ == "__main__":
 						upgradable_pkgs.append(pkgdata["Name"])
 
 			build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
+			cleanup_makedeps()
 
 		if args.clean:
 			clean_cache(keep_installed=True)
