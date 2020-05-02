@@ -6,6 +6,8 @@
 
 # heavily inspired by the _pacman completion
 
+local -a _blinky_opts_all _blinky_opts_cache _blinky_opts_install _blinky_opts_build 
+
 _blinky_opts_all=(
   '(-v --verbose)'{-v,--verbose}'[Be more verbose]'
 )
@@ -58,6 +60,7 @@ _blinky_completions_all_packages() {
 
 # main dispatcher
 _blinky_zsh_comp() {
+  local -a _blinky_actions _full_actions _exclude_rules
   # commands (all mutually exclusive)
   _blinky_actions=(
     {-h,--help}'[Display usage]'
@@ -92,6 +95,7 @@ _blinky_zsh_comp() {
 
   cmd=( ${${${(M)words:#-S*}#-}:#-*} )
   case $cmd[1] in
+    # Depending on the command that is run, do not offer flags that will be ignored
     Sc*)
       _arguments : \
         $_full_actions[@] \
@@ -136,9 +140,13 @@ _blinky_zsh_comp() {
         '*:package:_blinky_completions_all_packages'
       ;;
     *)
-      # else, (i.e. no -S command on the current command line
+      # else, (i.e. no -S command on the current command line)
+      # We offer all possible flags
       _arguments : \
         $_full_actions[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_blinky_opts_cache[@] \
         $_blinky_opts_all[@]
       ;;
   esac
