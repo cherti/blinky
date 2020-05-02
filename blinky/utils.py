@@ -129,3 +129,23 @@ def getchar(msg):
 		termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 	print()
 	return ch
+
+
+def get_data_dir():
+	from xdg import BaseDirectory
+
+	if os.path.isdir(os.path.expanduser('~/.blinky')):  # backward compatibility
+		print(" DEPRECATION WARNING: support for ~/.blinky will be removed in future versions, call migrate-blinky-dirs.py to migrate and silence this message")
+		return os.path.expanduser('~/.blinky/cache')
+
+	return BaseDirectory.save_data_path('blinky')
+
+
+def get_cache_dir():
+	from xdg import BaseDirectory
+
+	if os.path.isdir(os.path.expanduser('~/.blinky')):  # backward compatibility
+		print(" DEPRECATION WARNING: support for ~/.blinky will be removed in future versions, call migrate-blinky-dirs.py to migrate and silence this message")
+		return os.path.expanduser('~/.blinky/cache')
+
+	return BaseDirectory.save_cache_path('blinky')

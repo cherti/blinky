@@ -6,7 +6,7 @@ setup(
     author='Jonas Große Sundrup',
     author_email='cherti@letopolis.de',
     packages=['blinky'],
-    scripts=['scripts/blinky', 'scripts/rebuild-blinky.sh'],
+    scripts=['scripts/blinky', 'scripts/rebuild-blinky.sh', 'scripts/migrate-blinky-dirs.py'],
     install_requires=[
         #'pyalpm'  # not on pypi
 		#'colordiff'  # not on pypi
