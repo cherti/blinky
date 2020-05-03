@@ -47,6 +47,7 @@ _blinky_completions_all_packages() {
   # zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
   zstyle -s :completion:expand-word:complete:blinky:pkgcomp: numbers minimum_package_name_length || minimum_package_name_length=4
   if [[ $#PREFIX -lt $minimum_package_name_length || $PREFIX = -* ]]; then
+    _message "not completing package names with less than $minimum_package_name_length characters provided"
     return 0
   fi
   matches=( $(blinky -complete $PREFIX) )

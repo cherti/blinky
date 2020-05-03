@@ -30,3 +30,24 @@ In particular the currently available options are
   * explicitly rebuild packages: `blinky -Sr [<package> ...]` or `blinky -Srr [<package> ...]`
 
 blinky will store its data according to the `XDG_BASE_DIR`-specification, specifically in the directories specified by the `XDG_CACHE_HOME` (build-files and built packages, `~/.cache/blinky` by default) and `XDG_DATA_HOME` (rewiew-results, `~/.local/share/blinky` by default) environment variables respectively.
+
+## How to tweak
+
+To enable tab completion in zsh, copy the
+[`completion/_blinky`](completion/_blinky) file into a directory in your
+`$FPATH` (or into a new directory that you add to the `$FPATH` before
+`compinit` is called in your zsh startup).
+
+Completion of package names requires querying AUR and thus has a high latency.
+To avoid blocking the shell accidentally when completing `blinky -S <TAB>`
+(which would result in a list of all AUR packages), a minimum of 4 characters
+needs to be provided to trigger a query. This can be modified through `zstyle`:
+
+```zsh
+zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
+```
+
+This only applies to install operation. Locally installed packages get
+completed for the `-Sr*` operations regardless of the number of provided
+characters.
+>>>>>>> 49f96b6... document completion of package names behaviour in user doc
