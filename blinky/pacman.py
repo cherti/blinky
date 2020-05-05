@@ -2,10 +2,11 @@
 
 import subprocess, os, pyalpm, pycman
 from distutils import spawn
+from threading import Lock
 
 handle = pycman.config.init_with_config('/etc/pacman.conf') #pyalpm.Handle("/", "/var/lib/pacman")
-ldb = handle.get_localdb()
-sdbs = handle.get_syncdbs()
+ldb_lock, ldb = Lock(), handle.get_localdb()
+sdbs = [(Lock(), sdb) for sdb in handle.get_syncdbs()]
 
 devnull = open(os.devnull, 'w')
 sudo = spawn.find_executable("sudo")
@@ -13,7 +14,7 @@ sudo = spawn.find_executable("sudo")
 def refresh():
 	global handle, ldb, sdbs
 	handle = pycman.config.init_with_config('/etc/pacman.conf') #pyalpm.Handle("/", "/var/lib/pacman")
-	ldb, sdbs = handle.get_localdb(), handle.get_syncdbs()
+	ldb, sdbs = handle.get_localdb(), [(Lock(), sdb) for sdb in handle.get_syncdbs()]
 
 def execute_privileged(cmdlist):
 	if sudo:
@@ -22,14 +23,27 @@ def execute_privileged(cmdlist):
 		return subprocess.call(["su", "-c"] + [" ".join(cmdlist)])
 
 def find_local_satisfier(pkgname):
-	return pyalpm.find_satisfier(ldb.pkgcache, pkgname)
+	ldb_lock.acquire()
+	try:
+		satisfier = pyalpm.find_satisfier(ldb.pkgcache, pkgname)
+	finally:
+		ldb_lock.release()
+
+	return satisfier
 
 def find_satisfier_in_syncdbs(pkgname):
-	for db in sdbs:
-		s = pyalpm.find_satisfier(db.pkgcache, pkgname)
+	for lock, db in sdbs:
+		lock.acquire()
+		try:
+			s = pyalpm.find_satisfier(db.pkgcache, pkgname)
+		finally:
+			lock.release()
+
 		if s:
 			return s
+
 	return None
+
 
 def get_foreign_package_versions():
 	pkgs = subprocess.getoutput("pacman -Qm")
