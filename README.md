@@ -29,4 +29,4 @@ In particular the currently available options are
   * clean cache: `blinky -Sc` or `blinky -Scc`
   * explicitly rebuild packages: `blinky -Sr [<package> ...]` or `blinky -Srr [<package> ...]`
 
-blinky will store its data according to the `XDG_BASE_DIR`-specification, specifically in the directories specified by the `XDG_CACHE_DIR` (build-files and built packages, `~/.cache/blinky` by default) and `XDG_DATA_DIR` (rewiew-results, `~/.local/share/blinky` by default) environment variables respectively.
+blinky will store its data according to the `XDG_BASE_DIR`-specification, specifically in the directories specified by the `XDG_CACHE_HOME` (build-files and built packages, `~/.cache/blinky` by default) and `XDG_DATA_HOME` (rewiew-results, `~/.local/share/blinky` by default) environment variables respectively.
