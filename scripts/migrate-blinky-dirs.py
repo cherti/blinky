@@ -22,11 +22,17 @@ print("Gonna start migrating ~/.blinky:")
 migrate("build", cache)
 migrate("logs", cache)
 migrate("cache", os.path.join(cache, 'pkg'))
+migrate("reviewed", data)
 
 input("Proceed? (Ctrl+C if not)")
 
 migrate("build", cache, execute=True)
 migrate("logs", cache, execute=True)
 migrate("cache", os.path.join(cache, 'pkg'), execute=True)
+migrate("reviewed", data, execute=True)
 
-shutil.rmtree(blinkydir)
+try:
+    os.rmdir(blinkydir)
+except OSError:
+    print("There appear to be unmigrated files left in ~/.blinky.")
+    print("Please check if this is an error of the migration script.")
