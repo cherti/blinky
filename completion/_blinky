@@ -20,7 +20,6 @@ _blinky_opts_build=(
   '--difftool=[specify tool used for diffing]:difftool: _command_names -e'
   '--makepkg.conf[Configuration file for makepkg]:makpkg.conf: _files'
   '*--ignore[ignore package]:package: _blinky_completions_all_packages'
-  '--asdeps[If packages are installed, install them as dependencies]'
   '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
   "--keep-sources[Keep sources]:keep which sources:((none\:'keep no sources' skipped\:'keep sources of skipped packages' all\:'keep all sources'))"
   '--keep-builddeps[Do not uninstall previously uninstalled makedeps after building]'
