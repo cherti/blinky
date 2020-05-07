@@ -17,13 +17,13 @@ _blinky_opts_install=(
 )
 
 _blinky_opts_build=(
-  '--difftool=[specify tool used for diffing]:difftool: _command_names -e'
-  '--makepkg.conf[Configuration file for makepkg]:makpkg.conf: _files'
-  '*--ignore[ignore package]:package: _blinky_completions_all_packages'
-  '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
   "--keep-sources[Keep sources]:keep which sources:((none\:'keep no sources' skipped\:'keep sources of skipped packages' all\:'keep all sources'))"
-  '--keep-builddeps[Do not uninstall previously uninstalled makedeps after building]'
   '--build-only[Only build, do not install anything]'
+  '--difftool=[specify tool used for diffing]:difftool: _command_names -e'
+  '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
+  '*--ignore[ignore package]:package: _blinky_completions_all_packages'
+  '--keep-builddeps[Do not uninstall previously uninstalled makedeps after building]'
+  '--makepkg.conf[Configuration file for makepkg]:makpkg.conf: _files'
 )
 
 # provides completions for packages available from repositories
@@ -94,51 +94,51 @@ _blinky_zsh_comp() {
     # Depending on the command that is run, do not offer flags that will be ignored
     Sc*)
       _arguments : \
-        $_full_actions[@] \
-        $_blinky_opts_all[@]
+        $_blinky_opts_all[@] \
+        $_full_actions[@]
       ;;
     Ss)
       _arguments : \
-        $_full_actions[@] \
         $_blinky_opts_all[@] \
+        $_full_actions[@] \
         '*:search text'
       ;;
     Sr*)
       _arguments : \
-        $_full_actions[@] \
         $_blinky_opts_all[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
+        $_full_actions[@] \
         '*:package:_blinky_completions_local_packages'
       ;;
     Si)
       _arguments : \
-        $_full_actions[@] \
         $_blinky_opts_all[@] \
+        $_full_actions[@] \
         '*:package:_blinky_completions_all_packages'
       ;;
     Syu)
       _arguments : \
-        $_full_actions[@] \
+        $_blinky_opts_all[@] \
         $_blinky_opts_build[@] \
-        $_blinky_opts_all[@]
+        $_full_actions[@]
       ;;
     S*)
       _arguments : \
-        $_full_actions[@] \
+        $_blinky_opts_all[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
-        $_blinky_opts_all[@] \
+        $_full_actions[@] \
         '*:package:_blinky_completions_all_packages'
       ;;
     *)
       # else, (i.e. no -S command on the current command line)
       # We offer all possible flags
       _arguments : \
-        $_full_actions[@] \
+        $_blinky_opts_all[@] \
         $_blinky_opts_build[@] \
         $_blinky_opts_install[@] \
-        $_blinky_opts_all[@]
+        $_full_actions[@]
       ;;
   esac
 }
