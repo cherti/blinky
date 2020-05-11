@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='blinky',
-    version='0.20.1',
+    version='0.21',
     author='Jonas Große Sundrup',
     author_email='cherti@letopolis.de',
     packages=['blinky'],
