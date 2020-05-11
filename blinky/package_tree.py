@@ -323,7 +323,8 @@ class Package:
 			self.version_latest    = self.pkgdata['Version']
 
 			depnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("Depends") or []]
-			makedepnames = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("MakeDepends") or []]
+			makedepnames  = [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("MakeDepends") or []]
+			makedepnames += [pn.split('>=')[0].split('=')[0] for pn in self.pkgdata.get("CheckDepends") or []]
 
 			_, _, _, aurdata = utils.check_in_aur(depnames + makedepnames)
 
