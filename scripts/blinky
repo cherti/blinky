@@ -102,7 +102,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 0, "Fetching information and files for dependency-graph for {} package{}".format(len(aurpkgs), '' if len(aurpkgs) == 1 else 's'))
 
 
-
 	def parse_packages_with_depcheck(pkgname, ctx=None):
 		try:
 			return Package(pkgname, ctx=ctx)
@@ -380,7 +379,7 @@ if __name__ == "__main__":
 					if v_upstream > v_installed:
 						upgradable_pkgs.append(pkgdata["Name"])
 
-			build_packages_from_aur(upgradable_pkgs, install_as_dep=args.asdeps)
+			build_packages_from_aur(upgradable_pkgs)
 			cleanup_makedeps()
 
 		if args.clean:
