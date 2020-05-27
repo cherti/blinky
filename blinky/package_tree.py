@@ -400,7 +400,13 @@ class Package:
 		return self.srcpkg.review(via=self)
 
 
-	def build(self, buildflags=['-Cdf'], recursive=False):
+	def build(self, buildflags=['-Cdf'], recursive=False, dependency=False):
+
+		if dependency and self.installed:
+			# if this is a dependency and already installed, we do not bother,
+			# upgrades are taken care of by -Syu, just as it is common with the official repos
+			utils.logmsg(self.ctx.v, 3, "skipping build of installed dependency {}".format(self.name))
+			return True
 
 		if not self.check_makedeps_installed():
 			msg = "Makedeps not installed for {}".format(self.name)
@@ -409,7 +415,7 @@ class Package:
 
 		if recursive:
 			for d in self.deps:
-				succeeded = d.build(buildflags=buildflags, recursive=True)
+				succeeded = d.build(buildflags=buildflags, recursive=True, dependency=True)
 				if not succeeded:
 					return False  # one dep fails, the entire branch fails immediately, software will not be runnable
 
