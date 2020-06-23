@@ -251,7 +251,7 @@ def clean_cache(keep_installed=False):
 		try:
 			*pkgnameparts, pkgver, pkgrel, pkgarch = fname.split(".pkg.")[0].split("-")
 		except ValueError:
-			msg = "Non-package {} detected in {}. You might want to clean this up manually.".format(p, ctx.cachedir)
+			msg = "Non-package {} detected in {}. You might want to clean this up manually.".format(fname, ctx.cachedir)
 			utils.logerr(None, msg)
 			raise
 
