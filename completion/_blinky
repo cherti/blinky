@@ -1,0 +1,146 @@
+#compdef blinky
+# Copyright (C) 2018 Paul Seyfert <pseyfert.mathphys@gmail.com>
+#
+# This software is distributed under the terms of the GNU General Public
+# Licence version 3 (GPL Version 3), copied verbatim in the file "LICENSE".
+
+# heavily inspired by the _pacman completion
+
+local -a _blinky_opts_all _blinky_opts_install _blinky_opts_build
+
+_blinky_opts_all=(
+  '(-v --verbose)'{-v,--verbose}'[Be more verbose]'
+)
+
+_blinky_opts_install=(
+  '--asdeps[If packages are installed, install them as dependencies]'
+)
+
+_blinky_opts_build=(
+  "--keep-sources[Keep sources]:keep which sources:((none\:'keep no sources' skipped\:'keep sources of skipped packages' all\:'keep all sources'))"
+  '--build-only[Only build, do not install anything]'
+  '--difftool=[specify tool used for diffing]:difftool: _command_names -e'
+  '--force-review[Force review even if exact copies of the files have already been reviewed positively]'
+  '*--ignore[ignore package]:package: _blinky_completions_all_packages'
+  '--keep-builddeps[Do not uninstall previously uninstalled makedeps after building]'
+  '--makepkg.conf[Configuration file for makepkg]:makpkg.conf: _files'
+)
+
+# provides completions for packages available from repositories
+# these can be specified as either 'package' or 'repository/package'
+_blinky_completions_local_packages() {
+  local -a seq sep cmd packages repositories packages_long
+
+  #    ${(f)"$(pacman -Qm)"} split the response from `pacman -Qm` by line break
+  #  ${.....................[@]%%\ *} strip away the largest match of trailing " *"
+  packages=( ${${(f)"$(pacman -Qm)"}[@]%%\ *} )
+
+  typeset -U packages
+  _wanted packages expl "installed non-repository packages" compadd "${(@)packages}"
+}
+
+_blinky_completions_all_packages() {
+  local -i minimum_package_name_length
+  # steer minimum package name length for launching package search
+  # set with:
+  # zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
+  zstyle -s :completion:expand-word:complete:blinky:pkgcomp: numbers minimum_package_name_length || minimum_package_name_length=4
+  if [[ $#PREFIX -lt $minimum_package_name_length || $PREFIX = -* ]]; then
+    _message "not completing package names with less than $minimum_package_name_length characters provided"
+    return 0
+  fi
+  matches=( $(blinky -complete $PREFIX) )
+  typeset -U packages
+  _wanted packages expl "packages" compadd "${(@)matches}"
+}
+
+# main dispatcher
+_blinky_zsh_comp() {
+  local -a _blinky_actions _full_actions _exclude_rules
+  # commands (all mutually exclusive)
+  _blinky_actions=(
+    {-h,--help}'[Display usage]'
+    '-S[Install package(s) from AUR]'
+    '-Sr[Reinstall package(s) from AUR (including rebuild)]'
+    '-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
+    '-Ss[Search for package(s) in AUR]'
+    '-Si[Get detailed info on packages in AUR]'
+    '-Syu[Upgrade all out-of-date AUR-packages]'
+    '-Sc[Clean cache of all uninstalled package files]'
+    '-Scc[Clean cache of all package files, including installed]'
+  )
+
+  # remove longest trailing "[*" from every element and pack () around
+  _exclude_rules='('"${_blinky_actions[@]%%\[*}"')'
+
+  # prefix every element from _blinky_actions with _exclude_rules this results in something like
+  #
+  # '(-S -Sr -Srr)-S[Install package(s) from AUR]'
+  # '(-S -Sr -Srr)-Sr[Reinstall package(s) from AUR (including rebuild)]'
+  # '(-S -Sr -Srr)-Srr[Reinstall package(s) and dependencies from AUR (including rebuild)]'
+  #
+  # this is the syntax for _arguments to say "do not suggest any of ( <these> ) once <THAT> is present and explain it as [ <text> ]
+  _full_actions=($_exclude_rules${^_blinky_actions})
+
+  local -a cmd;
+  local tmp
+  #     ${(M)words:#-S*} : array of all the elements of words, that match -S*
+  #   ${................#-} remove leading -
+  # ${.....................:#-*} : array of all the elements that don't match -*
+  # i.e. args is all that starts with a single - and that single - removed
+
+  cmd=( ${${${(M)words:#-S*}#-}:#-*} )
+  case $cmd[1] in
+    # Depending on the command that is run, do not offer flags that will be ignored
+    Sc*)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_full_actions[@]
+      ;;
+    Ss)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_full_actions[@] \
+        '*:search text'
+      ;;
+    Sr*)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_full_actions[@] \
+        '*:package:_blinky_completions_local_packages'
+      ;;
+    Si)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_full_actions[@] \
+        '*:package:_blinky_completions_all_packages'
+      ;;
+    Syu)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_build[@] \
+        $_full_actions[@]
+      ;;
+    S*)
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_full_actions[@] \
+        '*:package:_blinky_completions_all_packages'
+      ;;
+    *)
+      # else, (i.e. no -S command on the current command line)
+      # We offer all possible flags
+      _arguments : \
+        $_blinky_opts_all[@] \
+        $_blinky_opts_build[@] \
+        $_blinky_opts_install[@] \
+        $_full_actions[@]
+      ;;
+  esac
+}
+
+_blinky_zsh_comp "$@"
