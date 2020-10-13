@@ -431,9 +431,6 @@ class Package:
 			return True
 
 		utils.logmsg(self.ctx.v, 3, "building sources of {}".format(self.name))
-		if self.srcpkg.built:
-			return self.srcpkg.build_success
-
 		succeeded = self.srcpkg.build(buildflags=buildflags)
 		if not succeeded:
 			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
