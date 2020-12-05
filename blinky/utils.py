@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import requests, sys, os, stat
+import requests, sys, os, stat, subprocess
 import termcolor
 from blinky import pacman
 
@@ -164,3 +164,6 @@ def get_cache_dir():
 		return os.path.expanduser('~/.blinky/cache')
 
 	return BaseDirectory.save_cache_path('blinky')
+
+def display_notification(msg):
+	subprocess.call(["notify-send", "blinky", msg])

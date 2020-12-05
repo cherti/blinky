@@ -31,6 +31,7 @@ parser.add_argument("--no-ignore-ood", action='store_true', default=False, dest=
 parser.add_argument("--difftool", action='store', default=None, dest='difftool', metavar='<difftool>', help="specify tool used for diffing (must work via '<tool> file1 file2')")
 parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', metavar='makepkg-configfile', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
 parser.add_argument("--ignore", action='append', default=[], dest='ignored_pkgs', metavar='<pkg>', help="ignore package (can be specified multiple times)")
+parser.add_argument("-n", "--notify", action='store_true', default=False, dest='notify_on_interaction', help="Ignore packages flagged out-ot-date")
 
 args = parser.parse_args()
 
@@ -136,6 +137,8 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	for p in packages:
 		p.get_src()
 
+	if args.notify_on_interaction:
+		utils.display_notification("User interaction required:\nreview")
 	for p in packages:
 		if not p.review():
 			utils.logmsg(ctx.v, 0, "Skipping: {}: Did not pass review".format(p.name))
@@ -195,6 +198,8 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	repodeps_uninstalled = set([p.name for p in repodeps if not p.installed])
 	to_be_installed = repodeps_uninstalled.union(md_repos)
 
+	if args.notify_on_interaction:
+		utils.display_notification("User interaction required:\npackage installation")
 	if to_be_installed:
 		utils.logmsg(ctx.v, 0, "Installing dependencies from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
@@ -240,6 +245,9 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 		utils.logmsg(ctx.v, 1, "Packages have been built:")
 		utils.logmsg(ctx.v, 1, ", ".join(built_deps.union(built_pkgs)) or "None")
 	else:
+		if args.notify_on_interaction:
+			utils.display_notification("User interaction required:\ninstallation of built packages")
+
 		if built_deps:
 			utils.logmsg(ctx.v, 0, "Installing package dependencies")
 			if not pacman.install_package_files(built_deps, asdeps=True):
