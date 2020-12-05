@@ -50,4 +50,3 @@ zstyle :completion:expand-word:complete:blinky:pkgcomp: numbers 4
 This only applies to install operation. Locally installed packages get
 completed for the `-Sr*` operations regardless of the number of provided
 characters.
->>>>>>> 49f96b6... document completion of package names behaviour in user doc
