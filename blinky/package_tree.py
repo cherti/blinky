@@ -304,7 +304,7 @@ class Package:
 			self.pkgdata = aurdata
 		else:
 			try:
-				self.pkgdata = utils.query_aur("info", self.name, single=True)
+				self.pkgdata = utils.query_aur("info", self.name, single=True, ignore_ood=ctx.ignore_ood)
 			except utils.APIError as e:
 
 				msg = "Dependency unsatisfiable via AUR, repos or installed packages: {}"

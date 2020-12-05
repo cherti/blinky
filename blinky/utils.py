@@ -58,7 +58,7 @@ def delete_onerror(func, path, excinfo):
 		os.remove(path)
 
 
-def query_aur(query_type, arg, single=False, search_by=None):
+def query_aur(query_type, arg, single=False, search_by=None, ignore_ood=False):
 	if query_type not in ["info", "search"]:
 		raise UnknownAURQueryType("query {} is not a valid query type".format(query_type))
 
@@ -78,6 +78,15 @@ def query_aur(query_type, arg, single=False, search_by=None):
 		raise APIError("AUR-API currently not available", "unavailable")
 
 	aurdata = r.json()
+	if ignore_ood:
+		# kick out all packages flagged out-of-date
+		filtered_results = []
+		for i, result in enumerate(aurdata["results"]):
+			if result["OutOfDate"] is None:
+				filtered_results.append(result)
+
+		aurdata["results"] = filtered_results
+
 	if single:
 		if type == "info" and aurdata["resultcount"] > 1:
 			raise AmbiguousPacketName("Package name {} is ambiguous for some reason, please consider a bug report".format(arg))
@@ -89,9 +98,9 @@ def query_aur(query_type, arg, single=False, search_by=None):
 		return aurdata
 
 
-def query_aur_exit_on_error(query_type, arg, single=False, search_by=None):
+def query_aur_exit_on_error(query_type, arg, single=False, search_by=None, ignore_ood=False):
 	try:
-		return query_aur(query_type, arg, single=single, search_by=search_by)
+		return query_aur(query_type, arg, single=single, search_by=search_by, ignore_ood=ignore_ood)
 	except APIError as e:
 		if e.type == 'ratelimit':
 			logerr(5, "Your IP seems to be ratelimited by the AUR-API. Try again tomorrow.")

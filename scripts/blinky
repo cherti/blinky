@@ -26,13 +26,15 @@ parser.add_argument("--keep-sources", action='store', default='none', dest='keep
 parser.add_argument("--build-only", action='store_true', default=False, dest='buildonly', help="Only build, do not install anything")
 parser.add_argument("pkg_candidates", metavar="pkgname", type=str, nargs="*", help="packages to install/build")
 parser.add_argument('--verbose', '-v', action='count', default=0, dest='verbosity')
+parser.add_argument("--ignore-ood", action='store_true', default=False, dest='ignore_ood', help="Ignore packages flagged out-ot-date")
+parser.add_argument("--no-ignore-ood", action='store_true', default=False, dest='no_ignore_ood', help="Negates --ignore-ood")
 parser.add_argument("--difftool", action='store', default=None, dest='difftool', metavar='<difftool>', help="specify tool used for diffing (must work via '<tool> file1 file2')")
 parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', metavar='makepkg-configfile', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
 parser.add_argument("--ignore", action='append', default=[], dest='ignored_pkgs', metavar='<pkg>', help="ignore package (can be specified multiple times)")
 
 args = parser.parse_args()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v', 'ignore_ood'])
 
 verified_makepkgconf = '/etc/makepkg.conf'
 if os.path.isfile(args.makepkgconf) and os.access(args.makepkgconf, os.R_OK):
@@ -50,7 +52,8 @@ ctx = Config(
 		difftool=args.difftool,
 		makepkgconf=verified_makepkgconf,
 		ignored_pkgs=args.ignored_pkgs,
-		v=args.verbosity
+		v=args.verbosity,
+		ignore_ood = args.ignore_ood if not args.no_ignore_ood else False
 		)
 
 os.makedirs(ctx.cachedir, exist_ok=True)
@@ -331,7 +334,7 @@ if __name__ == "__main__":
 			build_packages_from_aur(args.pkg_candidates, install_as_dep=args.asdeps)
 			cleanup_makedeps()
 		if args.complete:
-			aurdata = utils.query_aur("search", args.pkg_candidates)
+			aurdata = utils.query_aur("search", args.pkg_candidates, ignore_ood=ctx.ignore_ood)
 			import re
 			exp = re.compile(args.pkg_candidates[0] + '.*')
 			for pkgdata in aurdata["results"]:
@@ -344,7 +347,7 @@ if __name__ == "__main__":
 			if args.search_by and args.search_by not in valid_by_values:
 				util.logerr(1, "specified field is to search by is not available, must be one of {}".format(", ".join(valid_by_values)))
 
-			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates, search_by=args.search_by)
+			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates, search_by=args.search_by, ignore_ood=ctx.ignore_ood)
 			if not aurdata or aurdata["resultcount"] == 0:
 				utils.logmsg(ctx.v, 0, "No results found")
 			else:
@@ -359,7 +362,7 @@ if __name__ == "__main__":
 			from blinky.templates import pkginfo
 			foundSth = False
 			for pkg in args.pkg_candidates:
-				pkgdata = utils.query_aur_exit_on_error("info", pkg, single=True)
+				pkgdata = utils.query_aur_exit_on_error("info", pkg, single=True, ignore_ood=ctx.ignore_ood)
 				if pkgdata:
 					foundSth = True
 					print(pkginfo.format(
@@ -390,7 +393,7 @@ if __name__ == "__main__":
 
 			utils.logmsg(ctx.v, 0, "Checking for updates against AUR")
 			foreign_pkg_v = pacman.get_foreign_package_versions()
-			aurdata = utils.query_aur_exit_on_error("info", foreign_pkg_v.keys())
+			aurdata = utils.query_aur_exit_on_error("info", foreign_pkg_v.keys(), ignore_ood=ctx.ignore_ood)
 			upgradable_pkgs = []
 			for pkgdata in aurdata["results"]:
 				if pkgdata["Name"] in foreign_pkg_v:
