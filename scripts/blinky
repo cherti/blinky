@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, asyncio, shutil, urllib3, requests, concurrent
+import sys, argparse, os, asyncio, shutil, urllib3, requests, concurrent
 from collections import namedtuple
 from packaging import version
 from blinky.package_tree import Package, dedup_pkgs
@@ -33,6 +33,11 @@ parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf
 parser.add_argument("--ignore", action='append', default=[], dest='ignored_pkgs', metavar='<pkg>', help="ignore package (can be specified multiple times)")
 
 args = parser.parse_args()
+
+if len(sys.argv) < 2:
+	# if no arguments are supplied, print help message and exit
+	parser.print_help()
+	sys.exit()
 
 Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v', 'ignore_ood'])
 
