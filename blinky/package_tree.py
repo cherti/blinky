@@ -436,6 +436,12 @@ class Package:
 			utils.logerr(None, "Building sources of package {} failed, aborting this subtree".format(self.name))
 			utils.logerr(None, "├─stdout-log: {}".format(self.srcpkg.stdoutlogfile), primary=False)
 			utils.logerr(None, "└─stderr-log: {}".format(self.srcpkg.stderrlogfile), primary=False)
+			if self.ctx.printed_error_log_lines > 0:
+				utils.logmsg(self.ctx.v, 0, "Tail of stderr:")
+				with open(self.srcpkg.stderrlogfile, 'r') as logfile:
+					errorlog = logfile.read().strip().split("\n")
+					for line in errorlog[-self.ctx.printed_error_log_lines:]:
+						print("    {}".format(line))
 			return False
 
 		pkgext_makepkgconf = subprocess.getoutput("bash -c 'source {} && echo $PKGEXT'".format(self.ctx.makepkgconf))

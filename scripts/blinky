@@ -33,6 +33,7 @@ parser.add_argument("--difftool", action='store', default=None, dest='difftool',
 parser.add_argument("--makepkg.conf", action='store', default='/etc/makepkg.conf', dest='makepkgconf', metavar='makepkg-configfile', help="Configuration file for makepkg, defaults to /etc/makepkg.conf")
 parser.add_argument("--ignore", action='append', default=[], dest='ignored_pkgs', metavar='<pkg>', help="ignore package (can be specified multiple times)")
 parser.add_argument("-n", "--notify", action='store_true', default=False, dest='notify_on_interaction', help="Ignore packages flagged out-ot-date")
+parser.add_argument("--print-error-log-lines", action='store', type=int, default=0, dest='printed_error_log_lines', help="In case of build-errors, print up to this many lines of stderr right to stdout (default: 0)")
 
 args = parser.parse_args()
 
@@ -41,7 +42,7 @@ if len(sys.argv) < 2:
 	parser.print_help()
 	sys.exit()
 
-Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v', 'ignore_ood'])
+Config = namedtuple('Context', ['cachedir', 'builddir', 'revieweddir', 'logdir', 'force_review', 'rebuild', 'difftool', 'makepkgconf', 'ignored_pkgs', 'v', 'ignore_ood', "printed_error_log_lines"])
 
 verified_makepkgconf = '/etc/makepkg.conf'
 if os.path.isfile(args.makepkgconf) and os.access(args.makepkgconf, os.R_OK):
@@ -60,7 +61,8 @@ ctx = Config(
 		makepkgconf=verified_makepkgconf,
 		ignored_pkgs=args.ignored_pkgs,
 		v=args.verbosity,
-		ignore_ood = args.ignore_ood if not args.no_ignore_ood else False
+		ignore_ood = args.ignore_ood if not args.no_ignore_ood else False,
+		printed_error_log_lines = args.printed_error_log_lines
 		)
 
 os.makedirs(ctx.cachedir, exist_ok=True)
