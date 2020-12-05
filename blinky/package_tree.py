@@ -442,6 +442,13 @@ class Package:
 					errorlog = logfile.read().strip().split("\n")
 					for line in errorlog[-self.ctx.printed_error_log_lines:]:
 						print("    {}".format(line))
+			if self.ctx.printed_error_log_lines == -1:
+				utils.logmsg(self.ctx.v, 0, "stderr:")
+				with open(self.srcpkg.stderrlogfile, 'r') as logfile:
+					errorlog = logfile.read().strip().split("\n")
+					for line in errorlog:
+						print("    {}".format(line))
+
 			return False
 
 		pkgext_makepkgconf = subprocess.getoutput("bash -c 'source {} && echo $PKGEXT'".format(self.ctx.makepkgconf))
