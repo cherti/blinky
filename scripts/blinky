@@ -13,6 +13,7 @@ primary.add_argument("-S", action='store_true', default=False, dest='install', h
 primary.add_argument("-Sr", action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
 primary.add_argument("-Srr", action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) and dependencies from AUR (including rebuild)")
 primary.add_argument("-Ss", action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
+parser.add_argument("--by", action='store', default=None, dest='search_by', metavar='<value>', help="search specifically by field")
 primary.add_argument("-complete", action='store_true', default=False, dest='complete', help=argparse.SUPPRESS)
 primary.add_argument("-Si", action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
@@ -338,8 +339,13 @@ if __name__ == "__main__":
 					print(pkgdata["Name"])
 		if args.search:
 			from termcolor import colored
-			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates)
-			if aurdata["resultcount"] == 0:
+
+			valid_by_values = ["name", "name-desc", "maintainer", "depends", "makedepends", "optdepends", "checkdepends"]
+			if args.search_by and args.search_by not in valid_by_values:
+				util.logerr(1, "specified field is to search by is not available, must be one of {}".format(", ".join(valid_by_values)))
+
+			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates, search_by=args.search_by)
+			if not aurdata or aurdata["resultcount"] == 0:
 				utils.logmsg(ctx.v, 0, "No results found")
 			else:
 				for pkgdata in aurdata["results"]:

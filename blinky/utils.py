@@ -58,14 +58,20 @@ def delete_onerror(func, path, excinfo):
 		os.remove(path)
 
 
-def query_aur(query_type, arg, single=False):
+def query_aur(query_type, arg, single=False, search_by=None):
 	if query_type not in ["info", "search"]:
 		raise UnknownAURQueryType("query {} is not a valid query type".format(query_type))
+
+	valid_search_by = search_by in ["name", "name-desc", "maintainer", "depends", "makedepends", "optdepends", "checkdepends"]
 
 	arg = [arg] if type(arg) != list else arg
 
 	arg_type = "arg[]" if query_type == "info" else "arg"
-	r = requests.get("https://aur.archlinux.org/rpc/", params={"type": query_type, "v":5, arg_type:arg})
+	query_params = {"type": query_type, "v":5, arg_type:arg}
+	if query_type == "search" and valid_search_by:
+		query_params["by"] = search_by
+
+	r = requests.get("https://aur.archlinux.org/rpc/", params=query_params)
 	if r.status_code == 429:
 		raise APIError("Rate limit of AUR-API hit", "ratelimit")
 	elif r.status_code == 503:
@@ -83,9 +89,9 @@ def query_aur(query_type, arg, single=False):
 		return aurdata
 
 
-def query_aur_exit_on_error(query_type, arg, single=False):
+def query_aur_exit_on_error(query_type, arg, single=False, search_by=None):
 	try:
-		return query_aur(query_type, arg, single=single)
+		return query_aur(query_type, arg, single=single, search_by=search_by)
 	except APIError as e:
 		if e.type == 'ratelimit':
 			logerr(5, "Your IP seems to be ratelimited by the AUR-API. Try again tomorrow.")
