@@ -8,6 +8,7 @@ from blinky import pacman, utils
 
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
+primary.add_argument("--version", action='store_true', default=False, dest='print_version', help="print version info and exit")
 primary.add_argument("-S", action='store_true', default=False, dest='install', help="Install package(s) from AUR")
 primary.add_argument("-Sr", action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
 primary.add_argument("-Srr", action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) and dependencies from AUR (including rebuild)")
@@ -395,6 +396,8 @@ if __name__ == "__main__":
 		if args.fullclean:
 			clean_cache(keep_installed=False)
 			clean_builddir()
+		if args.print_version:
+			print("0.22.1")
 
 	except urllib3.exceptions.MaxRetryError as e:
 		msg = "Unable to connect to {}: Max retries exceeded".format(e.url)
