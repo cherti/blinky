@@ -19,6 +19,7 @@ primary.add_argument("-Si", action='store_true', default=False, dest='info', hel
 primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
 primary.add_argument("-Sc", action='store_true', default=False, dest='clean', help="Clean cache of all uninstalled package files")
 primary.add_argument("-Scc", action='store_true', default=False, dest='fullclean', help="Clean cache of all package files, including installed")
+primary.add_argument("--rebuild-python-from-aur", action='store_true', default=False, dest='rebuild_aur_python', help="Clean cache of all package files, including installed")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--force-review", action='store_true', default=False, dest='force_review', help="Force review even if exact copies of the files have already been reviewed positively")
 parser.add_argument("--keep-builddeps", action='store_true', default=False, dest='keep_builddeps', help="Do not uninstall previously uninstalled makedeps after building")
@@ -54,7 +55,7 @@ ctx = Config(
 		logdir=os.path.join(utils.get_cache_dir(), 'logs'),
 		revieweddir=os.path.join(utils.get_data_dir(), 'reviewed'),
 		force_review=args.force_review,
-		rebuild='package' if args.rebuildpkg else 'tree' if args.rebuildtree else None,
+		rebuild='package' if (args.rebuildpkg or args.rebuild_aur_python) else 'tree' if args.rebuildtree else None,
 		difftool=args.difftool,
 		makepkgconf=verified_makepkgconf,
 		ignored_pkgs=args.ignored_pkgs,
@@ -416,6 +417,15 @@ if __name__ == "__main__":
 						upgradable_pkgs.append(pkgdata["Name"])
 
 			build_packages_from_aur(upgradable_pkgs)
+			cleanup_makedeps()
+		if args.rebuild_aur_python:
+			utils.exit_if_root()
+
+			pypkgs = [pkg for pkg in pacman.ldb.pkgcache if pkg.name.startswith("python-")]
+			python_pkgs_from_aur = [pkg for pkg in pypkgs if not pacman.find_satisfier_in_syncdbs(pkg.name)]
+			pkgnames = [pkg.name for pkg in python_pkgs_from_aur]
+
+			build_packages_from_aur(pkgnames)
 			cleanup_makedeps()
 
 		if args.clean:
