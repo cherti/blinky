@@ -368,12 +368,20 @@ if __name__ == "__main__":
 				utils.logmsg(ctx.v, 0, "No results found")
 			else:
 				for pkgdata in aurdata["results"]:
+
 					crepo = colored('aur/', color='magenta', attrs=['bold'])
 					cname = colored(pkgdata["Name"], attrs=['bold'])
 					cversion = colored(pkgdata["Version"], color='green', attrs=['bold'])
-					print("{}{} {}".format(crepo, cname, cversion))
+
+					installed_state = ""
+					if pacman.find_local_satisfier(pkgdata["Name"]):
+						installed_state = colored("[installed]", color='cyan', attrs=['bold'])
+
+					print("{}{} {} {}".format(crepo, cname, cversion, installed_state))
+
 					desc = pkgdata["Description"]
 					print("    " + (desc if desc else colored("no description provided by PKGBUILD", color='white')))
+
 		if args.info:
 			from blinky.templates import pkginfo
 			foundSth = False
