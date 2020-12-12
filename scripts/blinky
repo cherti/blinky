@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
 			aurdata = utils.query_aur_exit_on_error("search", args.pkg_candidates, search_by=args.search_by, ignore_ood=ctx.ignore_ood)
 			if not aurdata or aurdata["resultcount"] == 0:
-				utils.logmsg(ctx.v, 0, "No results found")
+				sys.exit(1)
 			else:
 				for pkgdata in aurdata["results"]:
 
