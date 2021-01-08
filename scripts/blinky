@@ -201,9 +201,9 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	repodeps_uninstalled = set([p.name for p in repodeps if not p.installed])
 	to_be_installed = repodeps_uninstalled.union(md_repos)
 
-	if args.notify_on_interaction:
-		utils.display_notification("User interaction required:\npackage installation")
 	if to_be_installed:
+		if args.notify_on_interaction:
+			utils.display_notification("User interaction required:\npackage installation")
 		utils.logmsg(ctx.v, 0, "Installing dependencies from repos")
 		if not pacman.install_repo_packages(to_be_installed, asdeps=True):
 			utils.logerr(0, "Could not install dependencies from repos")
