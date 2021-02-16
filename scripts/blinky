@@ -95,7 +95,6 @@ def cleanup_makedeps():
 	global unneeded_makedeps
 	if unneeded_makedeps and not args.keep_builddeps:
 		utils.logmsg(ctx.v, 0, "Removing previously uninstalled makedeps")
-		pacman.refresh()
 		if not pacman.remove_packages([p.name for p in unneeded_makedeps if pacman.find_local_satisfier(p.name)]):
 			utils.logerr(None, "Failed to remove previously uninstalled makedeps")
 
@@ -189,7 +188,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 	makedeps_aur = set([p for p in uninstalled_makedeps if p.in_aur])
 	deps_aur_total = deps_aur.union(makedeps_aur)
 	if len(deps_aur_total) > 0:
-		pacman.refresh()
 		utils.logmsg(ctx.v, 0, "Building deps from aur: {}".format(", ".join(p.name for p in deps_aur_total)))
 		build_packages_from_aur([p.name for p in deps_aur_total], install_as_dep=True)
 
@@ -209,7 +207,6 @@ def build_packages_from_aur(package_candidates, install_as_dep=False):
 			utils.logerr(0, "Could not install dependencies from repos")
 
 
-	pacman.refresh()
 	skipped_due_to_makedep_not_installed = []
 	for p in packages:
 		if not p.check_makedeps_installed():
