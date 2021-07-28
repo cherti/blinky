@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, argparse, os, asyncio, shutil, urllib3, requests, concurrent, itertools
+import sys, argparse, os, asyncio, shutil, urllib3, requests, concurrent
 from collections import namedtuple
 from packaging import version
 from blinky.package_tree import Package, dedup_pkgs
