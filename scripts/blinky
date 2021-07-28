@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 
-import sys, argparse, os, asyncio, shutil, urllib3, requests, concurrent
+import sys, argparse, os, asyncio, shutil, urllib3, requests, concurrent, itertools
 from collections import namedtuple
 from packaging import version
 from blinky.package_tree import Package, dedup_pkgs
 from blinky import pacman, utils
 
+def permutate_arg(arg):
+	return set(map(lambda x: '-' + ''.join(x), (itertools.permutations(list(arg.lstrip('-'))))))
+
 parser = argparse.ArgumentParser(description="AUR package management made easy")
 primary = parser.add_mutually_exclusive_group()
 primary.add_argument("--version", action='store_true', default=False, dest='print_version', help="print version info and exit")
 primary.add_argument("-S", action='store_true', default=False, dest='install', help="Install package(s) from AUR")
-primary.add_argument("-Sr", action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
-primary.add_argument("-Srr", action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) and dependencies from AUR (including rebuild)")
-primary.add_argument("-Ss", action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
+primary.add_argument(*permutate_arg("-Sr"), action='store_true', default=False, dest='rebuildpkg', help="Reinstall package(s) from AUR (including rebuild)")
+primary.add_argument(*permutate_arg("-Srr"), action='store_true', default=False, dest='rebuildtree', help="Reinstall package(s) and dependencies from AUR (including rebuild)")
+primary.add_argument(*permutate_arg("-Ss"), action='store_true', default=False, dest='search', help="Search for package(s) in AUR")
 parser.add_argument("--by", action='store', default=None, dest='search_by', metavar='<value>', help="search specifically by field")
 primary.add_argument("-complete", action='store_true', default=False, dest='complete', help=argparse.SUPPRESS)
-primary.add_argument("-Si", action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
-primary.add_argument("-Syu", action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
-primary.add_argument("-Sc", action='store_true', default=False, dest='clean', help="Clean cache of all uninstalled package files")
-primary.add_argument("-Scc", action='store_true', default=False, dest='fullclean', help="Clean cache of all package files, including installed")
+primary.add_argument(*permutate_arg("-Si"), action='store_true', default=False, dest='info', help="Get detailed info on packages in AUR")
+primary.add_argument(*permutate_arg("-Syu"), action='store_true', default=False, dest='upgrade', help="Upgrade all out-of-date AUR-packages")
+primary.add_argument(*permutate_arg("-Sc"), action='store_true', default=False, dest='clean', help="Clean cache of all uninstalled package files")
+primary.add_argument(*permutate_arg("-Scc"), action='store_true', default=False, dest='fullclean', help="Clean cache of all package files, including installed")
 primary.add_argument("--rebuild-python-from-aur", action='store_true', default=False, dest='rebuild_aur_python', help="Rebuild all installed 'python-*' packages that originate in the AUR")
 parser.add_argument("--asdeps", action='store_true', default=False, dest='asdeps', help="If packages are installed, install them as dependencies")
 parser.add_argument("--force-review", action='store_true', default=False, dest='force_review', help="Force review even if exact copies of the files have already been reviewed positively")
