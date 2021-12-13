@@ -183,6 +183,11 @@ class SourcePkg:
 					elif user_verdict == 'd':  # user decides to diff
 						if os.path.exists(ref_file):
 
+							termsize = shutil.get_terminal_size()
+							separator_width = termsize.columns - 2  # 1 whitespace padding on each side
+
+							print()
+							print(colored(' ' + '='*separator_width, attrs=['bold']))
 							print()
 							if self.ctx.difftool:
 								try:
