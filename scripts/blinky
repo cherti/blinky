@@ -442,7 +442,7 @@ if __name__ == "__main__":
 			clean_cache(keep_installed=False)
 			clean_builddir()
 		if args.print_version:
-			print("0.22.1")
+			print("0.23")
 
 	except urllib3.exceptions.MaxRetryError as e:
 		msg = "Unable to connect to {}: Max retries exceeded".format(e.url)
