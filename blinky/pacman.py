@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import subprocess, os, pyalpm, pycman
-from distutils import spawn
+from shutil import which
 from threading import Lock
 
 handle = pycman.config.init_with_config('/etc/pacman.conf') #pyalpm.Handle("/", "/var/lib/pacman")
@@ -9,7 +9,7 @@ ldb_lock, ldb = Lock(), handle.get_localdb()
 sdbs = [(Lock(), sdb) for sdb in handle.get_syncdbs()]
 
 devnull = open(os.devnull, 'w')
-sudo = spawn.find_executable("sudo")
+sudo = which("sudo")
 
 def refresh():
 	global handle, ldb, sdbs
