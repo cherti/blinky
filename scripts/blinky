@@ -418,8 +418,15 @@ if __name__ == "__main__":
 			upgradable_pkgs = []
 			for pkgdata in aurdata["results"]:
 				if pkgdata["Name"] in foreign_pkg_v:
-					v_upstream = version.parse(pkgdata["Version"])
-					v_installed = version.parse(foreign_pkg_v[pkgdata["Name"]])
+					try:
+						v_upstream = version.parse(pkgdata["Version"])
+						v_installed = version.parse(foreign_pkg_v[pkgdata["Name"]])
+					except version.InvalidVersion as e:
+						if not pkgdata["Name"].endswith("-git"):  # we need to handle vcs packages separately
+							utils.logerr(None, ":: unsupported version of kind {} for package {}, skipping".format(e.args[0], pkgdata["Name"]))
+
+						continue
+
 					if v_upstream > v_installed:
 						upgradable_pkgs.append(pkgdata["Name"])
 
