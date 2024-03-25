@@ -111,7 +111,7 @@ class SourcePkg:
 		self.built = True
 
 		with open(self.stdoutlogfile, 'w') as outlog, open(self.stderrlogfile, 'w') as errlog:
-			p = subprocess.Popen(['makepkg'] + buildflags, stdout=outlog, stderr=errlog)
+			p = subprocess.Popen(['nice', '-10', 'makepkg'] + buildflags, stdout=outlog, stderr=errlog)
 			r = p.wait()
 
 		if r != 0:
